@@ -19,9 +19,6 @@ catalogs:
     '@release-it/conventional-changelog':
       specifier: ^11.0.1
       version: 11.0.1
-    del-cli:
-      specifier: ^7.0.0
-      version: 7.0.0
     react-native-builder-bob:
       specifier: ^0.41.0
       version: 0.41.0
@@ -282,9 +279,6 @@ importers:
       '@types/react':
         specifier: catalog:types
         version: 19.2.17
-      del-cli:
-        specifier: catalog:build
-        version: 7.0.0
       react:
         specifier: catalog:react
         version: 19.2.7
@@ -2733,11 +2727,6 @@ packages:
     peerDependencies:
       quickjs-wasi: ^0.0.1
 
-  del-cli@7.0.0:
-    resolution: {integrity: sha512-fRl4pWJYu9WFQH8jXdQUYvcD0IMtij9WEc7qmB7xOyJEweNJNuE7iKmqNeoOT1DbBUjtRjxlw8Y63qKBI/NQ1g==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   del@8.0.1:
     resolution: {integrity: sha512-gPqh0mKTPvaUZGAuHbrBUYKZWBNAeHG7TU3QH5EhVwPMyKvmfJaNXhcD2jTcXsJRRcffuho4vaYweu80dRrMGA==}
     engines: {node: '>=18'}
@@ -4084,10 +4073,6 @@ packages:
   meow@13.2.0:
     resolution: {integrity: sha512-pxQJQzB6djGPXh08dacEloMFopsOqGVRKFPYvPOt9XDZ1HasbgDZA74CJGreSU4G3Ak7EFJGoiH2auq+yXISgA==}
     engines: {node: '>=18'}
-
-  meow@14.0.0:
-    resolution: {integrity: sha512-JhC3R1f6dbspVtmF3vKjAWz1EVIvwFrGGPLSdU6rK79xBwHWTuHoLnRX/t1/zHS1Ch1Y2UtIrih7DAHuH9JFJA==}
-    engines: {node: '>=20'}
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -8620,12 +8605,6 @@ snapshots:
       esprima: 4.0.1
       quickjs-wasi: 0.0.1
 
-  del-cli@7.0.0:
-    dependencies:
-      del: 8.0.1
-      meow: 14.0.0
-      presentable-error: 0.0.1
-
   del@8.0.1:
     dependencies:
       globby: 14.1.0
@@ -10156,8 +10135,6 @@ snapshots:
   memoize-one@6.0.0: {}
 
   meow@13.2.0: {}
-
-  meow@14.0.0: {}
 
   merge-stream@2.0.0: {}
 
