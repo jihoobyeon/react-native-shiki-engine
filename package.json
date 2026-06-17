@@ -11,7 +11,7 @@
   },
   "scripts": {
     "postinstall": "git submodule update --init --recursive packages/react-native-shiki-engine/third_party/oniguruma",
-    "clean": "node scripts/clean.mjs",
+    "clean": "node scripts/clean.js",
     "update:submodule": "git submodule update --remote --merge",
     "build": "pnpm --filter react-native-shiki-engine build",
     "typecheck": "pnpm --filter react-native-shiki-engine build && pnpm -r run typecheck",

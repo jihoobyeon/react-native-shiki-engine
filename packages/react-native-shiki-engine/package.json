@@ -49,7 +49,6 @@
   ],
   "scripts": {
     "build": "bob build",
-    "clean": "node scripts/clean.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint . && eslint .",
     "lint:fix": "oxlint . --fix && eslint . --fix",
