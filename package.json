@@ -7,11 +7,11 @@
   "author": "Ryan Skinner <hello@ryanskinner.com> (https://github.com/skiniks)",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.18.0"
   },
   "scripts": {
     "postinstall": "git submodule update --init --recursive packages/react-native-shiki-engine/third_party/oniguruma",
-    "clean": "node scripts/clean.js",
+    "clean": "node scripts/clean.ts",
     "update:submodule": "git submodule update --remote --merge",
     "build": "pnpm --filter react-native-shiki-engine build",
     "typecheck": "pnpm --filter react-native-shiki-engine build && pnpm -r run typecheck",
@@ -26,6 +26,7 @@
     "@antfu/eslint-config": "catalog:eslint",
     "@eslint-react/eslint-plugin": "catalog:eslint",
     "@release-it/conventional-changelog": "catalog:build",
+    "@types/node": "catalog:types",
     "eslint": "catalog:eslint",
     "eslint-plugin-oxlint": "catalog:eslint",
     "eslint-plugin-react-refresh": "catalog:eslint",

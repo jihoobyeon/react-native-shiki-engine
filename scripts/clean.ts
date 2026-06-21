@@ -27,19 +27,19 @@ const specificPaths = [
   'examples/expo-app/ios',
 ]
 
-function removeDirRecursive(dirPath) {
+function removeDirRecursive(dirPath: string) {
   try {
     fs.rmSync(dirPath, { recursive: true, force: true })
     console.log(styleText('green', '✓'), dirPath)
   }
   catch (error) {
-    if (error.code !== 'ENOENT') {
+    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
       console.error(styleText('red', '✗'), dirPath, error.message)
     }
   }
 }
 
-function findAndRemove(dir, targetNames) {
+function findAndRemove(dir: string, targetNames: string[]) {
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true })
 
@@ -58,7 +58,7 @@ function findAndRemove(dir, targetNames) {
     }
   }
   catch (error) {
-    if (error.code !== 'ENOENT') {
+    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
       console.error(styleText('red', 'Error scanning'), dir, error.message)
     }
   }
