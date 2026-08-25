@@ -86,9 +86,9 @@ Our pre-commit hooks verify that your commit message matches this format when co
 
 ### Linting
 
-[ESLint](https://eslint.org/), [TypeScript](https://www.typescriptlang.org/)
+[vite-plus](https://github.com/voidzero-dev/vite-plus), [@rari/lint](https://www.npmjs.com/package/@rari/lint), [ESLint](https://eslint.org/), [TypeScript](https://www.typescriptlang.org/)
 
-We use [TypeScript](https://www.typescriptlang.org/) for type checking and [ESLint](https://eslint.org/) for linting and formatting the code.
+We use [TypeScript](https://www.typescriptlang.org/) for type checking, [vite-plus](https://github.com/voidzero-dev/vite-plus) (`vp lint` / `vp fmt`) with [@rari/lint](https://www.npmjs.com/package/@rari/lint) for formatting and oxlint, and [ESLint](https://eslint.org/) for remaining lint rules.
 
 Our pre-commit hooks verify that the linter and tests pass when committing.
 
@@ -108,7 +108,9 @@ The root `package.json` file contains various scripts for common tasks:
 
 - `pnpm install`: setup project by installing dependencies.
 - `pnpm typecheck`: type-check files with TypeScript across all packages.
-- `pnpm lint`: lint files with ESLint across all packages.
+- `pnpm lint`: format-check, oxlint (`vp lint`), and ESLint across the monorepo.
+- `pnpm fmt`: format files with vite-plus.
+- `pnpm fmt:check`: verify formatting without modifying files.
 - `pnpm build`: build all packages.
 - `pnpm release`: publish a new version of the library.
 

@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint . && eslint .",
-    "lint:fix": "oxlint . --fix && eslint . --fix"
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix"
   },
   "dependencies": {
     "@shikijs/core": "catalog:shiki",
@@ -13,7 +13,10 @@
     "react-native": "catalog:react"
   },
   "devDependencies": {
+    "@rari/lint": "catalog:eslint",
     "@types/react": "catalog:types",
-    "typescript": "catalog:types"
+    "typescript": "catalog:types",
+    "typescript-7": "catalog:types",
+    "vite-plus": "catalog:build"
   }
 }

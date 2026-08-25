@@ -14,23 +14,20 @@ export function HighlighterProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo<HighlighterContextType>(
     () => ({
       initialize: async () => {
-        if (!initializationPromise) {
-          initializationPromise = (async () => {
-            highlighterInstance = await createHighlighterCore({
-              langs: [rust],
-              themes: [dracula],
-              engine: createOnigurumaEngine(import('@shikijs/engine-oniguruma/wasm-inlined')),
-            })
-          })()
-        }
+        initializationPromise ??= (async () => {
+          highlighterInstance = await createHighlighterCore({
+            langs: [rust],
+            themes: [dracula],
+            engine: createOnigurumaEngine(import('@shikijs/engine-oniguruma/wasm-inlined')),
+          })
+        })()
 
         await initializationPromise
       },
 
-      tokenize: (code: string, options: { lang: string, theme: string }) => {
-        if (!highlighterInstance) {
+      tokenize: (code: string, options: { lang: string; theme: string }) => {
+        if (!highlighterInstance)
           throw new Error('Highlighter not initialized. Call initialize() first.')
-        }
         return highlighterInstance.codeToTokensBase(code, options)
       },
 

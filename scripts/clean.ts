@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-// oxlint-disable no-console
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,20 +20,15 @@ const targetDirNames = [
   '.expo',
 ]
 
-const specificPaths = [
-  'examples/expo-app/android',
-  'examples/expo-app/ios',
-]
+const specificPaths = ['examples/expo-app/android', 'examples/expo-app/ios']
 
 function removeDirRecursive(dirPath: string) {
   try {
     fs.rmSync(dirPath, { recursive: true, force: true })
     console.log(styleText('green', '✓'), dirPath)
-  }
-  catch (error) {
-    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT')
       console.error(styleText('red', '✗'), dirPath, error.message)
-    }
   }
 }
 
@@ -44,8 +37,7 @@ function findAndRemove(dir: string, targetNames: string[]) {
     const entries = fs.readdirSync(dir, { withFileTypes: true })
 
     for (const entry of entries) {
-      if (!entry.isDirectory())
-        continue
+      if (!entry.isDirectory()) continue
 
       const fullPath = path.join(dir, entry.name)
 
@@ -56,29 +48,25 @@ function findAndRemove(dir: string, targetNames: string[]) {
 
       findAndRemove(fullPath, targetNames)
     }
-  }
-  catch (error) {
-    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') {
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT')
       console.error(styleText('red', 'Error scanning'), dir, error.message)
-    }
   }
 }
 
 console.log(styleText('cyan', 'Cleaning root directories...'))
-rootDirs.forEach((dir) => {
+rootDirs.forEach(dir => {
   const fullPath = path.join(rootDir, dir)
   removeDirRecursive(fullPath)
 })
 
 console.log(styleText('cyan', 'Cleaning nested directories...'))
-searchDirs.forEach((dir) => {
+searchDirs.forEach(dir => {
   const fullPath = path.join(rootDir, dir)
-  if (fs.existsSync(fullPath)) {
-    findAndRemove(fullPath, targetDirNames)
-  }
+  if (fs.existsSync(fullPath)) findAndRemove(fullPath, targetDirNames)
 })
 
-specificPaths.forEach((p) => {
+specificPaths.forEach(p => {
   const fullPath = path.join(rootDir, p)
   removeDirRecursive(fullPath)
 })

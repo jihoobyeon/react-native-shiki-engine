@@ -10,8 +10,7 @@ updates:
       eslint:
         patterns:
           - '*eslint*'
-          - oxlint
-          - '@antfu/*'
+          - '@rari/lint'
         update-types: [minor, patch]
       build-tools:
         patterns:
@@ -20,6 +19,7 @@ updates:
           - '@release-it/*'
           - react-native-builder-bob
           - del-cli
+          - vite-plus
         update-types: [minor, patch]
       babel:
         patterns:

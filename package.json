@@ -2,7 +2,7 @@
   "name": "react-native-shiki-engine-monorepo",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.5.2",
+  "packageManager": "pnpm@11.24.0",
   "description": "Shiki syntax highlighting for React Native - Monorepo",
   "author": "Ryan Skinner <hello@ryanskinner.com> (https://github.com/skiniks)",
   "license": "MIT",
@@ -15,23 +15,22 @@
     "update:submodule": "git submodule update --remote --merge",
     "build": "pnpm --filter react-native-shiki-engine build",
     "typecheck": "pnpm --filter react-native-shiki-engine build && pnpm -r run typecheck",
-    "lint": "pnpm -r run lint",
-    "lint:fix": "pnpm -r run lint:fix",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "lint": "pnpm --filter react-native-shiki-engine build && pnpm fmt:check && pnpm -r run lint && eslint packages/ examples/ scripts/ eslint.config.ts vite.config.ts package.json pnpm-workspace.yaml",
+    "lint:fix": "pnpm --filter react-native-shiki-engine build && pnpm fmt && pnpm -r run lint:fix && eslint packages/ examples/ scripts/ eslint.config.ts vite.config.ts package.json pnpm-workspace.yaml --fix",
     "lint:cpp": "scripts/clang-format.sh",
     "lint:all": "pnpm lint:fix && pnpm lint:cpp",
     "dev": "pnpm -r --parallel run dev",
     "release": "pnpm --filter react-native-shiki-engine release"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "catalog:eslint",
-    "@eslint-react/eslint-plugin": "catalog:eslint",
+    "@rari/lint": "catalog:eslint",
     "@release-it/conventional-changelog": "catalog:build",
     "@types/node": "catalog:types",
     "eslint": "catalog:eslint",
-    "eslint-plugin-oxlint": "catalog:eslint",
-    "eslint-plugin-react-refresh": "catalog:eslint",
-    "oxlint": "catalog:eslint",
     "release-it": "catalog:build",
-    "typescript": "catalog:types"
+    "typescript": "catalog:types",
+    "vite-plus": "catalog:build"
   }
 }

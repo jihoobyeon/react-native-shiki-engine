@@ -71,16 +71,19 @@ const tokens = highlighter.codeToTokensBase(code, {
 ```
 
 > [!IMPORTANT]
+>
 > ### Performance Note: The Highlighter Instance
 >
 > Create and maintain a single Highlighter instance at the app level. Avoid instantiating new highlighters inside components or frequently called functions.
 >
 > #### Recommended:
+>
 > - Store the highlighter instance in a global singleton or context
 > - Initialize it during app startup
 > - Reuse the same instance across your entire React Native application
 >
 > #### Not Recommended:
+>
 > - Creating new instances inside component render methods
 > - Initializing highlighters inside useEffect or event handlers
 > - Multiple instances for the same language/theme combination
@@ -105,6 +108,7 @@ For Expo apps targeting web, this native engine is not compatible as it relies o
 ### Setup for Expo Web
 
 1. Install the WASM engine:
+
 ```sh
 npx expo install @shikijs/engine-oniguruma
 ```
@@ -112,6 +116,7 @@ npx expo install @shikijs/engine-oniguruma
 2. Create platform-specific context files:
 
 **Native platforms** (`contexts/highlighter/index.tsx`):
+
 ```tsx
 import { createHighlighterCore } from '@shikijs/core'
 import javascript from '@shikijs/langs/javascript'
@@ -126,6 +131,7 @@ const highlighter = await createHighlighterCore({
 ```
 
 **Web platform** (`contexts/highlighter/index.web.tsx`):
+
 ```tsx
 import { createHighlighterCore } from '@shikijs/core'
 import { createOnigurumaEngine } from '@shikijs/engine-oniguruma'

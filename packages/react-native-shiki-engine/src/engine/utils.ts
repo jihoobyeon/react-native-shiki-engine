@@ -10,8 +10,7 @@ interface OnigResult {
 }
 
 export function convertToOnigMatch(result: OnigResult | null): IOnigMatch | null {
-  if (!result)
-    return null
+  if (!result) return null
 
   return {
     index: result.index,
