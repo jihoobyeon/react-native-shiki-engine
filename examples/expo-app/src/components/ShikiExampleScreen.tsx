@@ -14,13 +14,14 @@ export function ShikiExampleScreen() {
   const highlighter = useHighlighter()
 
   const platformName = Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android'
-  const statusBarHeight = Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0
+  const statusBarHeight = Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight ?? 0)
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
         const available = isNativeEngineAvailable()
-        const engineType = Platform.OS === 'web' ? 'WASM Engine' : available ? 'Native Engine' : 'Not Available'
+        const engineType =
+          Platform.OS === 'web' ? 'WASM Engine' : available ? 'Native Engine' : 'Not Available'
         setEngineStatus(engineType)
 
         await highlighter.initialize()
@@ -31,20 +32,18 @@ export function ShikiExampleScreen() {
         })
 
         setTokens(tokenized)
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         if (err instanceof Error) {
           setError(err.message)
           console.error('Tokenization error:', err)
-        }
-        else {
+        } else {
           setError('An unknown error occurred.')
           console.error('Unknown error:', err)
         }
       }
     }
 
-    initializeApp()
+    void initializeApp()
 
     return () => {
       highlighter.dispose()
@@ -66,15 +65,13 @@ export function ShikiExampleScreen() {
 
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
         <Text style={styles.languageTag}>rust</Text>
-        {error
-          ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )
-          : (
-              <TokenDisplay tokens={tokens} />
-            )}
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : (
+          <TokenDisplay tokens={tokens} />
+        )}
       </ScrollView>
     </View>
   )

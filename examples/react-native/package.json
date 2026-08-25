@@ -7,8 +7,8 @@
     "ios": "npx react-native run-ios",
     "start": "react-native start",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint . && eslint .",
-    "lint:fix": "oxlint . --fix && eslint . --fix"
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix"
   },
   "dependencies": {
     "@babel/runtime": "catalog:babel",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@babel/core": "catalog:babel",
+    "@rari/lint": "catalog:eslint",
     "@react-native-community/cli": "catalog:react-native-cli",
     "@react-native-community/cli-platform-android": "catalog:react-native-cli",
     "@react-native-community/cli-platform-ios": "catalog:react-native-cli",
@@ -30,6 +31,9 @@
     "@react-native/gradle-plugin": "catalog:react",
     "@react-native/metro-config": "catalog:react",
     "@types/react": "catalog:types",
-    "babel-plugin-module-resolver": "catalog:babel"
+    "babel-plugin-module-resolver": "catalog:babel",
+    "typescript": "catalog:types",
+    "typescript-7": "catalog:types",
+    "vite-plus": "catalog:build"
   }
 }

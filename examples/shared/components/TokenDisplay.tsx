@@ -16,6 +16,10 @@ function generateTokenKey(lineIndex: number, tokenIndex: number, token: ThemedTo
   return `token-${lineIndex}-${tokenIndex}-${token.offset}-${token.content}`
 }
 
+function isItalic(fontStyle: ThemedToken['fontStyle']): boolean {
+  return ((fontStyle ?? 0) & 1) === 1
+}
+
 export function TokenDisplay({ tokens }: TokenDisplayProps) {
   return (
     <View style={styles.codeContainer}>
@@ -24,7 +28,16 @@ export function TokenDisplay({ tokens }: TokenDisplayProps) {
           {tokens.map((line, lineIndex) => (
             <View key={generateLineKey(lineIndex, line)} style={styles.codeLine}>
               {line.map((token, tokenIndex) => (
-                <Text key={generateTokenKey(lineIndex, tokenIndex, token)} style={[{ color: token.color, fontStyle: token.fontStyle === 1 ? 'italic' : 'normal' }, styles.codeText]}>
+                <Text
+                  key={generateTokenKey(lineIndex, tokenIndex, token)}
+                  style={[
+                    {
+                      color: token.color,
+                      fontStyle: isItalic(token.fontStyle) ? 'italic' : 'normal',
+                    },
+                    styles.codeText,
+                  ]}
+                >
                   {token.content}
                 </Text>
               ))}

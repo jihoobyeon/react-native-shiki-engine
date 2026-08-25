@@ -3,7 +3,7 @@ import { createContext } from 'react'
 
 export interface HighlighterContextType {
   initialize: () => Promise<void>
-  tokenize: (code: string, options: { lang: string, theme: string }) => ThemedToken[][]
+  tokenize: (code: string, options: { lang: string; theme: string }) => ThemedToken[][]
   dispose: () => void
 }
 

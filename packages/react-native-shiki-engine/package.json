@@ -50,8 +50,8 @@
   "scripts": {
     "build": "bob build",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint . && eslint .",
-    "lint:fix": "oxlint . --fix && eslint . --fix",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
     "release": "release-it"
   },
   "peerDependencies": {
@@ -64,11 +64,15 @@
   },
   "devDependencies": {
     "@babel/core": "catalog:babel",
+    "@rari/lint": "catalog:eslint",
+    "@types/babel__core": "catalog:babel",
     "@types/react": "catalog:types",
     "react": "catalog:react",
     "react-native": "catalog:react",
     "react-native-builder-bob": "catalog:build",
-    "typescript": "catalog:types"
+    "typescript": "catalog:types",
+    "typescript-7": "catalog:types",
+    "vite-plus": "catalog:build"
   },
   "react-native-builder-bob": {
     "source": "src",
@@ -83,7 +87,8 @@
       [
         "typescript",
         {
-          "project": "tsconfig.json"
+          "project": "tsconfig.json",
+          "tsc": "node_modules/typescript-7/bin/tsc"
         }
       ]
     ]
