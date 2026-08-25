@@ -46,49 +46,141 @@ npx expo install @shikijs/engine-oniguruma
 
 ## Usage
 
-### Basic Integration
+Create a single highlighter at the app level with React Context. The examples use `rust` and `dracula`; the snippets below follow the same pattern as [`examples/react-native`](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples/react-native).
 
-```tsx
-import { createHighlighterCore } from '@shikijs/core'
-import javascript from '@shikijs/langs/javascript'
-import nord from '@shikijs/themes/nord'
-import { createNativeEngine, isNativeEngineAvailable } from 'react-native-shiki-engine'
+### 1. Define the context
 
-if (!isNativeEngineAvailable()) {
-  throw new Error('Native engine is not available')
+`src/contexts/highlighter/context.ts`:
+
+```ts
+import type { ThemedToken } from '@shikijs/core'
+import { createContext } from 'react'
+
+export interface HighlighterContextType {
+  initialize: () => Promise<void>
+  tokenize: (code: string, options: { lang: string; theme: string }) => ThemedToken[][]
+  dispose: () => void
 }
 
-const highlighter = await createHighlighterCore({
-  themes: [nord],
-  langs: [javascript],
-  engine: createNativeEngine(),
-})
+export const HighlighterContext = createContext<HighlighterContextType | null>(null)
+```
 
-const tokens = highlighter.codeToTokensBase(code, {
-  lang: 'javascript',
-  theme: 'nord',
-})
+### 2. Create the provider
+
+`src/contexts/highlighter/index.tsx`:
+
+```tsx
+import type { HighlighterCore } from '@shikijs/core'
+import { createHighlighterCore } from '@shikijs/core'
+import rust from '@shikijs/langs/rust'
+import dracula from '@shikijs/themes/dracula'
+import React from 'react'
+import { createNativeEngine, isNativeEngineAvailable } from 'react-native-shiki-engine'
+import { HighlighterContext, type HighlighterContextType } from './context'
+
+let highlighterInstance: HighlighterCore | null = null
+let initializationPromise: Promise<void> | null = null
+
+export function HighlighterProvider({ children }: { children: React.ReactNode }) {
+  const value = React.useMemo<HighlighterContextType>(
+    () => ({
+      initialize: async () => {
+        initializationPromise ??= (async () => {
+          if (!isNativeEngineAvailable()) throw new Error('Native engine not available.')
+
+          highlighterInstance = await createHighlighterCore({
+            langs: [rust],
+            themes: [dracula],
+            engine: createNativeEngine(),
+          })
+        })()
+
+        await initializationPromise
+      },
+
+      tokenize: (code, options) => {
+        if (!highlighterInstance)
+          throw new Error('Highlighter not initialized. Call initialize() first.')
+        return highlighterInstance.codeToTokensBase(code, options)
+      },
+
+      dispose: () => {
+        highlighterInstance?.dispose()
+        highlighterInstance = null
+        initializationPromise = null
+      },
+    }),
+    [],
+  )
+
+  return <HighlighterContext value={value}>{children}</HighlighterContext>
+}
+```
+
+### 3. Add a hook and use it in your app
+
+`src/hooks/useHighlighter.ts`:
+
+```ts
+import { use } from 'react'
+import { HighlighterContext } from '../contexts/highlighter/context'
+
+export function useHighlighter() {
+  const context = use(HighlighterContext)
+  if (!context) throw new Error('useHighlighter must be used within a HighlighterProvider')
+  return context
+}
+```
+
+Wrap your app with the provider, initialize once, then tokenize:
+
+```tsx
+import React, { useEffect, useState } from 'react'
+import { Text } from 'react-native'
+import { HighlighterProvider } from './contexts/highlighter'
+import { useHighlighter } from './hooks/useHighlighter'
+
+const code = `fn main() {
+  println!("Hello, world!");
+}`
+
+function HighlightedCode() {
+  const highlighter = useHighlighter()
+  const [output, setOutput] = useState('')
+
+  useEffect(() => {
+    const run = async () => {
+      await highlighter.initialize()
+      const tokens = highlighter.tokenize(code, { lang: 'rust', theme: 'dracula' })
+      setOutput(
+        tokens
+          .flat()
+          .map(token => token.content)
+          .join(''),
+      )
+    }
+
+    void run()
+    return () => highlighter.dispose()
+  }, [highlighter])
+
+  return <Text>{output}</Text>
+}
+
+export default function App() {
+  return (
+    <HighlighterProvider>
+      <HighlightedCode />
+    </HighlighterProvider>
+  )
+}
 ```
 
 > [!IMPORTANT]
 >
-> ### Performance Note: The Highlighter Instance
->
-> Create and maintain a single Highlighter instance at the app level. Avoid instantiating new highlighters inside components or frequently called functions.
->
-> #### Recommended:
->
-> - Store the highlighter instance in a global singleton or context
-> - Initialize it during app startup
-> - Reuse the same instance across your entire React Native application
->
-> #### Not Recommended:
->
-> - Creating new instances inside component render methods
-> - Initializing highlighters inside useEffect or event handlers
-> - Multiple instances for the same language/theme combination
->
-> See the [examples directory](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples) for reference implementations using React Context to maintain a single highlighter instance.
+> Keep a single highlighter instance for the lifetime of your app. Do not create new highlighters inside render, `useEffect`, or event handlers.
+
+See the [examples directory](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples) for full apps with token rendering and shared UI.
 
 ### Advanced Configuration
 
@@ -101,9 +193,30 @@ createNativeEngine({
 })
 ```
 
+Pass options when creating the engine inside `HighlighterProvider`:
+
+```tsx
+engine: createNativeEngine({ maxCacheSize: 1000 }),
+```
+
 ## Web Platform Support (Expo)
 
-For Expo apps targeting web, this native engine is not compatible as it relies on React Native's TurboModules and JSI. To support web platforms, use platform-specific files with Metro's `.web.tsx` extension.
+For Expo apps targeting web, the native engine is not available, it relies on TurboModules and JSI. Use Metro platform extensions (`.web.tsx`) to swap in the WASM engine on web.
+
+The [expo-app example](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples/expo-app) uses this layout:
+
+```text
+App.tsx                              # native entry
+App.web.tsx                          # web entry (optional SafeAreaProvider wrapper)
+src/
+  contexts/highlighter/
+    context.ts                       # shared context type (see examples/shared in the repo)
+    index.tsx                        # native HighlighterProvider
+    index.web.tsx                    # web HighlighterProvider
+  components/
+    ShikiExampleScreen.tsx           # native screen
+    ShikiExampleScreen.web.tsx       # web screen (no native engine check)
+```
 
 ### Setup for Expo Web
 
@@ -113,41 +226,151 @@ For Expo apps targeting web, this native engine is not compatible as it relies o
 npx expo install @shikijs/engine-oniguruma
 ```
 
-2. Create platform-specific context files:
+2. Enable the New Architecture for native builds in `app.json`:
 
-**Native platforms** (`contexts/highlighter/index.tsx`):
-
-```tsx
-import { createHighlighterCore } from '@shikijs/core'
-import javascript from '@shikijs/langs/javascript'
-import nord from '@shikijs/themes/nord'
-import { createNativeEngine } from 'react-native-shiki-engine'
-
-const highlighter = await createHighlighterCore({
-  themes: [nord],
-  langs: [javascript],
-  engine: createNativeEngine(),
-})
+```json
+{
+  "expo": {
+    "newArchEnabled": true
+  }
+}
 ```
 
-**Web platform** (`contexts/highlighter/index.web.tsx`):
+3. Add the shared context type at `src/contexts/highlighter/context.ts`:
+
+```ts
+import type { ThemedToken } from '@shikijs/core'
+import { createContext } from 'react'
+
+export interface HighlighterContextType {
+  initialize: () => Promise<void>
+  tokenize: (code: string, options: { lang: string; theme: string }) => ThemedToken[][]
+  dispose: () => void
+}
+
+export const HighlighterContext = createContext<HighlighterContextType | null>(null)
+```
+
+4. Create platform-specific providers:
+
+**Native** — `src/contexts/highlighter/index.tsx`:
 
 ```tsx
+import type { HighlighterContextType } from './context'
+import type { HighlighterCore } from '@shikijs/core'
+import { HighlighterContext } from './context'
+import { createHighlighterCore } from '@shikijs/core'
+import rust from '@shikijs/langs/rust'
+import dracula from '@shikijs/themes/dracula'
+import React from 'react'
+import { createNativeEngine, isNativeEngineAvailable } from 'react-native-shiki-engine'
+
+let highlighterInstance: HighlighterCore | null = null
+let initializationPromise: Promise<void> | null = null
+
+export function HighlighterProvider({ children }: { children: React.ReactNode }) {
+  const value = React.useMemo<HighlighterContextType>(
+    () => ({
+      initialize: async () => {
+        initializationPromise ??= (async () => {
+          if (!isNativeEngineAvailable()) throw new Error('Native engine not available.')
+
+          highlighterInstance = await createHighlighterCore({
+            langs: [rust],
+            themes: [dracula],
+            engine: createNativeEngine(),
+          })
+        })()
+
+        await initializationPromise
+      },
+
+      tokenize: (code, options) => {
+        if (!highlighterInstance)
+          throw new Error('Highlighter not initialized. Call initialize() first.')
+        return highlighterInstance.codeToTokensBase(code, options)
+      },
+
+      dispose: () => {
+        highlighterInstance?.dispose()
+        highlighterInstance = null
+        initializationPromise = null
+      },
+    }),
+    [],
+  )
+
+  return <HighlighterContext value={value}>{children}</HighlighterContext>
+}
+```
+
+**Web** — `src/contexts/highlighter/index.web.tsx`:
+
+```tsx
+import type { HighlighterContextType } from './context'
+import type { HighlighterCore } from '@shikijs/core'
+import { HighlighterContext } from './context'
 import { createHighlighterCore } from '@shikijs/core'
 import { createOnigurumaEngine } from '@shikijs/engine-oniguruma'
-import javascript from '@shikijs/langs/javascript'
-import nord from '@shikijs/themes/nord'
+import rust from '@shikijs/langs/rust'
+import dracula from '@shikijs/themes/dracula'
+import React from 'react'
 
-const highlighter = await createHighlighterCore({
-  themes: [nord],
-  langs: [javascript],
-  engine: createOnigurumaEngine(import('@shikijs/engine-oniguruma/wasm-inlined')),
-})
+let highlighterInstance: HighlighterCore | null = null
+let initializationPromise: Promise<void> | null = null
+
+export function HighlighterProvider({ children }: { children: React.ReactNode }) {
+  const value = React.useMemo<HighlighterContextType>(
+    () => ({
+      initialize: async () => {
+        initializationPromise ??= (async () => {
+          highlighterInstance = await createHighlighterCore({
+            langs: [rust],
+            themes: [dracula],
+            engine: createOnigurumaEngine(import('@shikijs/engine-oniguruma/wasm-inlined')),
+          })
+        })()
+
+        await initializationPromise
+      },
+
+      tokenize: (code, options) => {
+        if (!highlighterInstance)
+          throw new Error('Highlighter not initialized. Call initialize() first.')
+        return highlighterInstance.codeToTokensBase(code, options)
+      },
+
+      dispose: () => {
+        highlighterInstance?.dispose()
+        highlighterInstance = null
+        initializationPromise = null
+      },
+    }),
+    [],
+  )
+
+  return <HighlighterContext value={value}>{children}</HighlighterContext>
+}
 ```
 
-Metro will automatically use the `.web.tsx` file when bundling for web, and the regular `.tsx` file for native platforms.
+5. Wrap your app at the project root (`App.tsx`):
 
-See the [expo-app example](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples/expo-app) for a complete implementation.
+```tsx
+import { ShikiExampleScreen } from '@/components/ShikiExampleScreen'
+import { HighlighterProvider } from '@/contexts/highlighter/index'
+
+export default function App() {
+  return (
+    <HighlighterProvider>
+      <ShikiExampleScreen />
+    </HighlighterProvider>
+  )
+}
+```
+
+Metro picks `index.web.tsx` when bundling for web and `index.tsx` on native. The same import path works on both platforms.
+
+See the [expo-app example](https://github.com/skiniks/react-native-shiki-engine/tree/main/examples/expo-app) for the full app, including `App.web.tsx` and platform-specific screens.
 
 ## Technical Architecture
 
