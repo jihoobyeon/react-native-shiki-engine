@@ -31,7 +31,8 @@
       "types": "./lib/typescript/index.d.ts",
       "import": "./lib/module/index.js",
       "default": "./lib/module/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "main": "lib/module/index.js",
   "module": "lib/module/index.js",

@@ -1,0 +1,73 @@
+name: Build iOS Compat
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-ios-compat.yml
+      - packages/react-native-shiki-engine/cpp/**
+      - packages/react-native-shiki-engine/apple/**
+      - packages/react-native-shiki-engine/*.podspec
+      - packages/react-native-shiki-engine/package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/ci/**
+  pull_request:
+    paths:
+      - .github/workflows/build-ios-compat.yml
+      - packages/react-native-shiki-engine/cpp/**
+      - packages/react-native-shiki-engine/apple/**
+      - packages/react-native-shiki-engine/*.podspec
+      - packages/react-native-shiki-engine/package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - scripts/ci/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-compat-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_library:
+    name: iOS RN ${{ matrix.rn-version }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rn-version: 0.73.9
+            node-version: '20'
+          - rn-version: 0.81.6
+            node-version: '20'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Create Node.js symlink
+        run: |
+          sudo ln -sf "$(which node)" /usr/local/bin/node
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+
+      - name: Build library against React Native ${{ matrix.rn-version }}
+        env:
+          CI: true
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+        run: bash scripts/ci/ios-compat.sh "${{ matrix.rn-version }}"

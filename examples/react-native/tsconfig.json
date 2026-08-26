@@ -1,7 +1,7 @@
 {
-  "extends": "../../packages/react-native-shiki-engine/tsconfig",
+  "extends": "../../.config/typescript/tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": null,
+    "jsx": "react-native",
     "paths": {
       "@shared/*": ["../shared/*"]
     }

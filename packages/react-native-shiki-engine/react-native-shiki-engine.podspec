@@ -22,8 +22,14 @@ Pod::Spec.new do |s|
   if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
     s.pod_target_xcconfig = {
       "HEADER_SEARCH_PATHS" => [
+        # RN 0.77+: ReactCodegen
+        "\"$(PODS_ROOT)/Headers/Private/ReactCodegen\"",
+        "\"$(PODS_ROOT)/Headers/Public/ReactCodegen\"",
         "\"$(PODS_ROOT)/Headers/Private/ReactCodegen/react/renderer/components/NativeShikiEngineSpec\"",
         "\"$(PODS_ROOT)/Headers/Public/ReactCodegen/react/renderer/components/NativeShikiEngineSpec\"",
+        # RN 0.73–0.76: React-Codegen
+        "\"$(PODS_ROOT)/Headers/Private/React-Codegen\"",
+        "\"$(PODS_ROOT)/Headers/Public/React-Codegen\"",
         "\"$(PODS_ROOT)/Headers/Private/React-Codegen/react/renderer/components/NativeShikiEngineSpec\"",
         "\"$(PODS_ROOT)/Headers/Public/React-Codegen/react/renderer/components/NativeShikiEngineSpec\"",
       ].join(" "),
