@@ -106,4 +106,28 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     zIndex: 1,
   },
+  controls: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginHorizontal: 24,
+    marginBottom: 8,
+  },
+  chip: {
+    backgroundColor: '#3B4252',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  chipActive: {
+    backgroundColor: '#5E81AC',
+  },
+  chipText: {
+    color: '#D8DEE9',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#ECEFF4',
+  },
 })

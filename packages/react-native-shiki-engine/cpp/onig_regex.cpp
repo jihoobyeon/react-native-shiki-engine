@@ -2,151 +2,198 @@
 
 #include <algorithm>
 #include <cstring>
+#include <mutex>
 #include <new>
+#include <unordered_map>
 #include <vector>
 
 #include "onig_context.hpp"
+#include "platform_memory.hpp"
+#include "regex_memory.hpp"
 
-/** Rough estimate of regex pattern memory usage. Base + pattern size. */
-static size_t estimate_pattern_memory(const char* pattern, regex_t* regex) {
-  return strlen(pattern) + 1024;
-}
+namespace {
 
-/** Evicts cached patterns when memory limit exceeded, oldest first. */
-static void check_memory_pressure(OnigContext* context) {
-  if (context->current_memory_usage > CACHE_MEMORY_LIMIT) {
-    std::vector<std::pair<std::string, time_t>> patterns;
-    for (const auto& entry : context->impl->pattern_cache) {
-      patterns.push_back({entry.first, entry.second.last_used});
+struct GlobalPatternCache {
+  std::mutex mutex;
+  std::unordered_map<std::string, std::shared_ptr<CachedRegex>> entries;
+  size_t total_bytes = 0;
+  size_t max_entries = DEFAULT_MAX_CACHE_ENTRIES;
+  size_t max_bytes = 0;
+  size_t scanner_count = 0;
+
+  size_t effective_max_bytes() {
+    if (max_bytes == 0) {
+      max_bytes = default_cache_memory_budget();
     }
-
-    std::sort(patterns.begin(), patterns.end(), [](const auto& a, const auto& b) { return a.second < b.second; });
-
-    for (const auto& pattern : patterns) {
-      if (context->current_memory_usage <= CACHE_MEMORY_LIMIT) {
-        break;
-      }
-
-      auto it = context->impl->pattern_cache.find(pattern.first);
-      if (it != context->impl->pattern_cache.end()) {
-        context->current_memory_usage -= it->second.memory_size;
-        onig_free(it->second.regex);
-        context->impl->pattern_cache.erase(it);
-      }
-    }
+    return max_bytes;
   }
+};
+
+GlobalPatternCache& cache() {
+  static GlobalPatternCache instance;
+  return instance;
 }
 
-/** Removes expired patterns based on last access time. */
-static void cleanup_cache(OnigContext* context) {
-  time_t current_time = time(nullptr);
-  auto it = context->impl->pattern_cache.begin();
-
-  while (it != context->impl->pattern_cache.end()) {
-    if (current_time - it->second.last_used > CACHE_EXPIRY_SECONDS) {
-      context->current_memory_usage -= it->second.memory_size;
-      onig_free(it->second.regex);
-      it = context->impl->pattern_cache.erase(it);
-    } else {
-      ++it;
-    }
-  }
-}
-
-/** Retrieves cached pattern, updates LRU timestamp if found. */
-static regex_t* get_cached_pattern(OnigContext* context, const char* pattern) {
-  auto it = context->impl->pattern_cache.find(pattern);
-  if (it != context->impl->pattern_cache.end()) {
-    it->second.last_used = time(nullptr);
-    return it->second.regex;
-  }
-  return nullptr;
-}
-
-/** LRU pattern caching with memory limit enforcement. */
-static void cache_pattern(OnigContext* context, const char* pattern, regex_t* regex) {
-  if (context->impl->pattern_cache.size() >= context->max_cache_size) {
-    cleanup_cache(context);
-
-    if (context->impl->pattern_cache.size() >= context->max_cache_size) {
-      time_t oldest_time = time(nullptr);
-      std::string oldest_pattern;
-
-      for (const auto& entry : context->impl->pattern_cache) {
-        if (entry.second.last_used < oldest_time) {
-          oldest_time = entry.second.last_used;
-          oldest_pattern = entry.first;
-        }
-      }
-
-      auto it = context->impl->pattern_cache.find(oldest_pattern);
-      if (it != context->impl->pattern_cache.end()) {
-        context->current_memory_usage -= it->second.memory_size;
-        onig_free(it->second.regex);
-        context->impl->pattern_cache.erase(it);
-      }
-    }
-  }
-
-  size_t memory_size = estimate_pattern_memory(pattern, regex);
-  check_memory_pressure(context);
-
-  CachedPattern cached_pattern{regex, time(nullptr), memory_size};
-
-  context->impl->pattern_cache[pattern] = cached_pattern;
-  context->current_memory_usage += memory_size;
-}
-
-/** Creates UTF-8 regex scanner with LRU pattern cache. nullptr on failure. */
-OnigContext* create_scanner(const char** patterns, int pattern_count, size_t max_cache_size) {
-  static bool initialized = false;
-  if (!initialized) {
+void ensure_onig_initialized() {
+  static std::once_flag once;
+  std::call_once(once, [] {
     OnigEncodingType* encodings[] = {ONIG_ENCODING_UTF8};
     onig_initialize(encodings, 1);
-    initialized = true;
+    onig_set_retry_limit_in_match(10'000'000);
+    onig_set_retry_limit_in_search(10'000'000);
+    onig_set_match_stack_limit_size(32 * 1024 * 1024);
+    onig_set_parse_depth_limit(4096);
+  });
+}
+
+void trim_unlocked(GlobalPatternCache& g, bool force_all_unused) {
+  const size_t byte_limit = g.effective_max_bytes();
+
+  auto over_budget = [&] { return g.entries.size() > g.max_entries || g.total_bytes > byte_limit; };
+
+  if (!force_all_unused && !over_budget()) {
+    return;
   }
 
+  std::vector<std::pair<std::string, time_t>> unused;
+  unused.reserve(g.entries.size());
+  for (const auto& [key, value] : g.entries) {
+    if (value.use_count() == 1) {
+      unused.push_back({key, 0});
+    }
+  }
+
+  std::sort(unused.begin(), unused.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+  for (const auto& [key, _] : unused) {
+    if (!force_all_unused && !over_budget()) {
+      break;
+    }
+    auto it = g.entries.find(key);
+    if (it == g.entries.end() || it->second.use_count() != 1) {
+      continue;
+    }
+    g.total_bytes -= it->second->memory_size;
+    g.entries.erase(it);
+  }
+}
+
+std::shared_ptr<CachedRegex> compile_pattern(const char* pattern) {
+  regex_t* regex = nullptr;
+  OnigErrorInfo einfo;
+  const int result = onig_new(
+    &regex,
+    reinterpret_cast<const OnigUChar*>(pattern),
+    reinterpret_cast<const OnigUChar*>(pattern + strlen(pattern)),
+    ONIG_OPTION_CAPTURE_GROUP,
+    ONIG_ENCODING_UTF8,
+    ONIG_SYNTAX_DEFAULT,
+    &einfo
+  );
+
+  if (result != ONIG_NORMAL || !regex) {
+    return nullptr;
+  }
+
+  return std::make_shared<CachedRegex>(regex, estimate_pattern_memory(pattern, regex));
+}
+
+std::shared_ptr<CachedRegex> get_or_compile(const char* pattern) {
+  auto& g = cache();
+  std::lock_guard<std::mutex> lock(g.mutex);
+
+  auto it = g.entries.find(pattern);
+  if (it != g.entries.end()) {
+    return it->second;
+  }
+
+  trim_unlocked(g, false);
+
+  auto compiled = compile_pattern(pattern);
+  if (!compiled) {
+    return nullptr;
+  }
+
+  g.total_bytes += compiled->memory_size;
+  g.entries.emplace(pattern, compiled);
+  trim_unlocked(g, false);
+  return compiled;
+}
+
+}  // namespace
+
+void configure_pattern_cache(size_t max_entries, size_t max_bytes) {
+  auto& g = cache();
+  std::lock_guard<std::mutex> lock(g.mutex);
+  if (max_entries > 0) {
+    g.max_entries = max_entries;
+  }
+  if (max_bytes > 0) {
+    g.max_bytes = max_bytes;
+  }
+  trim_unlocked(g, false);
+}
+
+void clear_unused_pattern_cache(void) {
+  auto& g = cache();
+  std::lock_guard<std::mutex> lock(g.mutex);
+  trim_unlocked(g, true);
+}
+
+void trim_pattern_cache(void) {
+  auto& g = cache();
+  std::lock_guard<std::mutex> lock(g.mutex);
+  trim_unlocked(g, false);
+}
+
+OnigCacheStats get_pattern_cache_stats(void) {
+  auto& g = cache();
+  std::lock_guard<std::mutex> lock(g.mutex);
+  OnigCacheStats stats{};
+  stats.entry_count = g.entries.size();
+  stats.estimated_bytes = g.total_bytes;
+  stats.scanner_count = g.scanner_count;
+  stats.max_entries = g.max_entries;
+  stats.max_bytes = g.effective_max_bytes();
+  return stats;
+}
+
+OnigContext* create_scanner(const char** patterns, int pattern_count, size_t /*max_cache_size*/) {
+  if (!patterns || pattern_count < 0) {
+    return nullptr;
+  }
+
+  ensure_onig_initialized();
+
   try {
-    OnigContext* context = new OnigContext();
-    context->impl = new OnigContextImpl();
+    auto* context = new OnigContext();
     context->pattern_count = pattern_count;
-    context->max_cache_size = max_cache_size;
-    context->current_memory_usage = 0;
-    context->regexes = new regex_t*[static_cast<size_t>(pattern_count)];
-    context->region = onig_region_new();
+    context->patterns.reserve(static_cast<size_t>(pattern_count));
+
+    std::vector<regex_t*> raw;
+    raw.reserve(static_cast<size_t>(pattern_count));
 
     for (int i = 0; i < pattern_count; i++) {
-      regex_t* regex = get_cached_pattern(context, patterns[i]);
-
-      if (!regex) {
-        OnigErrorInfo einfo;
-        int result = onig_new(
-          &regex,
-          (const OnigUChar*)patterns[i],
-          (const OnigUChar*)(patterns[i] + strlen(patterns[i])),
-          // ONIG_OPTION_CAPTURE_GROUP matches vscode-oniguruma: without it,
-          // oniguruma disables numbered captures in any pattern that also
-          // contains named groups, silently breaking TextMate `captures`
-          // scope assignment (tokens lose their colors).
-          ONIG_OPTION_CAPTURE_GROUP,
-          ONIG_ENCODING_UTF8,
-          ONIG_SYNTAX_DEFAULT,
-          &einfo
-        );
-
-        if (result != ONIG_NORMAL) {
-          onig_region_free(context->region, 1);
-          delete[] context->regexes;
-          delete context->impl;
-          delete context;
-          return nullptr;
-        }
-
-        cache_pattern(context, patterns[i], regex);
+      auto cached = get_or_compile(patterns[i]);
+      if (!cached) {
+        delete context;
+        return nullptr;
       }
+      raw.push_back(cached->regex);
+      context->patterns.push_back(std::move(cached));
+    }
 
-      context->regexes[i] = regex;
-      context->impl->active_regexes.insert(regex);
+    if (pattern_count > 0) {
+      if (onig_regset_new(&context->regset, pattern_count, raw.data()) != ONIG_NORMAL) {
+        delete context;
+        return nullptr;
+      }
+    }
+
+    {
+      auto& g = cache();
+      std::lock_guard<std::mutex> lock(g.mutex);
+      g.scanner_count += 1;
     }
 
     return context;
@@ -155,79 +202,56 @@ OnigContext* create_scanner(const char** patterns, int pattern_count, size_t max
   }
 }
 
-/** Finds the leftmost match after start_pos across all patterns;
- *  position ties are won by the lowest pattern index (TextMate priority). */
 OnigResult* find_next_match(OnigContext* context, const char* text, int start_pos) {
-  if (!context || !text || start_pos < 0) {
+  if (!context || !text || start_pos < 0 || context->pattern_count <= 0 || !context->regset) {
     return nullptr;
   }
 
   try {
-    OnigResult* result = new OnigResult();
-    result->pattern_index = -1;
-    result->capture_indices = nullptr;
-    result->capture_count = 0;
-    result->match_start = -1;
-    result->match_end = -1;
-
-    int text_length = strlen(text);
-    int best_match_pos = -1;
-
-    for (int i = 0; i < context->pattern_count; i++) {
-      onig_region_clear(context->region);
-
-      int match_pos = onig_search(
-        context->regexes[i],
-        (OnigUChar*)text,
-        (OnigUChar*)(text + text_length),
-        (OnigUChar*)(text + start_pos),
-        (OnigUChar*)(text + text_length),
-        context->region,
-        ONIG_OPTION_NONE
-      );
-
-      if (match_pos >= 0) {
-        // vscode-oniguruma contract: pick the LEFTMOST match; ties (same
-        // position) are won by the LOWEST pattern index — TextMate rule
-        // order is rule priority. Never tie-break by match length: that
-        // lets later rules steal matches and assigns wrong scopes.
-        if (best_match_pos < 0 || match_pos < best_match_pos) {
-          best_match_pos = match_pos;
-          result->pattern_index = i;
-          result->match_start = context->region->beg[0];
-          result->match_end = context->region->end[0];
-
-          delete[] result->capture_indices;
-          // capture_count is the number of capture groups; indices store start/end pairs.
-          result->capture_count = context->region->num_regs;
-          result->capture_indices = new int[result->capture_count * 2];
-
-          for (int j = 0; j < context->region->num_regs; j++) {
-            result->capture_indices[j * 2] = context->region->beg[j];
-            result->capture_indices[j * 2 + 1] = context->region->end[j];
-          }
-
-          // Nothing can match earlier than start_pos; later patterns could
-          // only tie and ties keep the current (earlier) pattern.
-          if (best_match_pos == start_pos) {
-            break;
-          }
-        }
-      }
+    const int text_length = static_cast<int>(strlen(text));
+    if (start_pos > text_length) {
+      return nullptr;
     }
 
-    if (result->pattern_index >= 0) {
-      return result;
+    int match_pos = -1;
+    const int match_index = onig_regset_search(
+      context->regset,
+      reinterpret_cast<const OnigUChar*>(text),
+      reinterpret_cast<const OnigUChar*>(text + text_length),
+      reinterpret_cast<const OnigUChar*>(text + start_pos),
+      reinterpret_cast<const OnigUChar*>(text + text_length),
+      ONIG_REGSET_REGEX_LEAD,
+      ONIG_OPTION_NONE,
+      &match_pos
+    );
+
+    if (match_index < 0 || match_pos < 0) {
+      return nullptr;
     }
 
-    delete result;
-    return nullptr;
+    OnigRegion* region = onig_regset_get_region(context->regset, match_index);
+    if (!region) {
+      return nullptr;
+    }
+
+    auto* result = new OnigResult();
+    result->pattern_index = match_index;
+    result->match_start = region->beg[0];
+    result->match_end = region->end[0];
+    result->capture_count = region->num_regs;
+    result->capture_indices = new int[static_cast<size_t>(result->capture_count) * 2];
+
+    for (int j = 0; j < region->num_regs; j++) {
+      result->capture_indices[j * 2] = region->beg[j];
+      result->capture_indices[j * 2 + 1] = region->end[j];
+    }
+
+    return result;
   } catch (const std::bad_alloc&) {
     return nullptr;
   }
 }
 
-/** Safe cleanup of match result and capture indices. */
 void free_result(OnigResult* result) {
   if (result) {
     delete[] result->capture_indices;
@@ -235,19 +259,25 @@ void free_result(OnigResult* result) {
   }
 }
 
-/** RAII cleanup of scanner context and all cached patterns. */
 void free_scanner(OnigContext* context) {
-  if (context) {
-    if (context->region) {
-      onig_region_free(context->region, 1);
-    }
-
-    for (auto regex : context->impl->active_regexes) {
-      onig_free(regex);
-    }
-
-    delete[] context->regexes;
-    delete context->impl;
-    delete context;
+  if (!context) {
+    return;
   }
+
+  if (context->regset) {
+    onig_regset_free(context->regset);
+    context->regset = nullptr;
+  }
+
+  context->patterns.clear();
+
+  {
+    auto& g = cache();
+    std::lock_guard<std::mutex> lock(g.mutex);
+    if (g.scanner_count > 0) {
+      g.scanner_count -= 1;
+    }
+  }
+
+  delete context;
 }

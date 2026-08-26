@@ -1,27 +1,34 @@
 #ifndef ONIG_CONTEXT_HPP
 #define ONIG_CONTEXT_HPP
 
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
+#include <memory>
 #include <vector>
 
 #include "onig_regex.h"
 #include "oniguruma.h"
 
-struct CachedPattern {
-  regex_t* regex;
-  time_t last_used;
-  size_t memory_size;
+struct CachedRegex {
+  regex_t* regex = nullptr;
+  size_t memory_size = 0;
+
+  CachedRegex() = default;
+  explicit CachedRegex(regex_t* r, size_t bytes) : regex(r), memory_size(bytes) {}
+
+  ~CachedRegex() {
+    if (regex) {
+      onig_free(regex);
+      regex = nullptr;
+    }
+  }
+
+  CachedRegex(const CachedRegex&) = delete;
+  CachedRegex& operator=(const CachedRegex&) = delete;
 };
 
-struct OnigContextImpl {
-  std::unordered_map<std::string, CachedPattern> pattern_cache;
-  std::unordered_set<regex_t*> active_regexes;
+struct OnigContext {
+  std::vector<std::shared_ptr<CachedRegex>> patterns;
+  OnigRegSet* regset = nullptr;
+  int pattern_count = 0;
 };
-
-inline size_t estimate_pattern_memory(const char* pattern, const regex_t* regex) {
-  return strlen(pattern) + 1024;
-}
 
 #endif  // ONIG_CONTEXT_HPP

@@ -1,54 +1,19 @@
-import type { ThemedToken } from '@shikijs/core'
 import { TokenDisplay } from '@shared/components/TokenDisplay'
-import { useHighlighter } from '@shared/hooks/useHighlighter'
-import { rustExample } from '@shared/snippets/rust-example'
+import { useShikiDemo } from '@shared/hooks/useShikiDemo'
 import { styles } from '@shared/styles'
-import React, { useEffect, useState } from 'react'
-import { Platform, ScrollView, StatusBar, Text, View } from 'react-native'
-import { isNativeEngineAvailable } from 'react-native-shiki-engine'
+import React, { useCallback } from 'react'
+import { Platform, Pressable, ScrollView, StatusBar, Text, View } from 'react-native'
 
 export function ShikiExampleScreen() {
-  const [engineStatus, setEngineStatus] = useState('Initializing...')
-  const [tokens, setTokens] = useState<ThemedToken[][]>([])
-  const [error, setError] = useState('')
-  const highlighter = useHighlighter()
+  const resolveEngineStatus = useCallback((available: boolean) => {
+    if (Platform.OS === 'web') return 'WASM Engine'
+    return available ? 'Native Engine' : 'Not Available'
+  }, [])
+  const { engineStatus, error, language, theme, tokens, setLanguage, setTheme } =
+    useShikiDemo(resolveEngineStatus)
 
   const platformName = Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android'
   const statusBarHeight = Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight ?? 0)
-
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const available = isNativeEngineAvailable()
-        const engineType =
-          Platform.OS === 'web' ? 'WASM Engine' : available ? 'Native Engine' : 'Not Available'
-        setEngineStatus(engineType)
-
-        await highlighter.initialize()
-
-        const tokenized = highlighter.tokenize(rustExample, {
-          lang: 'rust',
-          theme: 'dracula',
-        })
-
-        setTokens(tokenized)
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message)
-          console.error('Tokenization error:', err)
-        } else {
-          setError('An unknown error occurred.')
-          console.error('Unknown error:', err)
-        }
-      }
-    }
-
-    void initializeApp()
-
-    return () => {
-      highlighter.dispose()
-    }
-  }, [highlighter])
 
   return (
     <View style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -63,8 +28,49 @@ export function ShikiExampleScreen() {
         </View>
       </View>
 
+      <View style={styles.controls}>
+        <Pressable
+          style={[styles.chip, language === 'rust' && styles.chipActive]}
+          onPress={() => {
+            setLanguage('rust')
+          }}
+        >
+          <Text style={[styles.chipText, language === 'rust' && styles.chipTextActive]}>rust</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, language === 'typescript' && styles.chipActive]}
+          onPress={() => {
+            setLanguage('typescript')
+          }}
+        >
+          <Text style={[styles.chipText, language === 'typescript' && styles.chipTextActive]}>
+            typescript
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, theme === 'dracula' && styles.chipActive]}
+          onPress={() => {
+            setTheme('dracula')
+          }}
+        >
+          <Text style={[styles.chipText, theme === 'dracula' && styles.chipTextActive]}>
+            dracula
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, theme === 'github-dark' && styles.chipActive]}
+          onPress={() => {
+            setTheme('github-dark')
+          }}
+        >
+          <Text style={[styles.chipText, theme === 'github-dark' && styles.chipTextActive]}>
+            github-dark
+          </Text>
+        </Pressable>
+      </View>
+
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
-        <Text style={styles.languageTag}>rust</Text>
+        <Text style={styles.languageTag}>{language}</Text>
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

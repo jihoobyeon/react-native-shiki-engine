@@ -1,7 +1,4 @@
 {
-  "extends": "../../.config/typescript/tsconfig.base.json",
-  "compilerOptions": {
-    "jsx": "react-native"
-  },
+  "extends": "../../.config/typescript/tsconfig.react-native.json",
   "include": ["**/*.ts", "**/*.tsx"]
 }

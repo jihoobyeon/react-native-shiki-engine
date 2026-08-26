@@ -184,19 +184,32 @@ See the [examples directory](https://github.com/skiniks/react-native-shiki-engin
 
 ### Advanced Configuration
 
-The native engine supports configuration options to optimize performance:
+The native engine exposes optional cache budgets and diagnostics:
 
 ```typescript
-createNativeEngine({
-  // Maximum number of patterns to cache
-  maxCacheSize: 1000,
+const engine = createNativeEngine({
+  // Soft cap on compiled patterns in the process-wide cache
+  maxCacheEntries: 2000,
+  // Soft cap on estimated cache memory (bytes). When omitted, the native
+  // layer picks a budget from available device memory (capped at 50MiB).
+  maxMemoryBytes: 32 * 1024 * 1024,
 })
+
+engine.getCacheStats() // { entryCount, estimatedBytes, scannerCount, maxEntries, maxBytes }
+engine.trimMemory() // drop unused cached patterns under pressure
+engine.clearPatternCache() // drop unused entries now
+engine.dispose() // destroy scanners created by this engine + clear unused cache
+
+// Optional: trim on iOS memoryWarning + app backgrounding
+import { attachMemoryPressureHandler } from 'react-native-shiki-engine'
+const detach = attachMemoryPressureHandler(engine)
+// later: detach()
 ```
 
 Pass options when creating the engine inside `HighlighterProvider`:
 
 ```tsx
-engine: createNativeEngine({ maxCacheSize: 1000 }),
+engine: createNativeEngine({ maxCacheEntries: 2000 }),
 ```
 
 ## Web Platform Support (Expo)
@@ -385,41 +398,29 @@ The module uses a three-layer architecture optimizing for both performance and d
    - Seamless integration with Shiki's API
    - Error boundaries with graceful degradation
 
-2. **JSI Bridge** (`cpp/`)
+2. **C++ TurboModule** (`cpp/`)
 
-   - Zero-copy JavaScript-to-native communication
-   - Smart pointer-based memory management
-   - Thread-safe pattern caching with LRU eviction
-   - Host object lifetime tracking
+   - JSI-backed TurboModule (New Architecture)
+   - Shared ownership of compiled patterns across scanners
+   - Thread-safe process-wide pattern cache
+   - UTF-16 index mapping with ASCII fast-path
 
 3. **Oniguruma Core** (vendored)
-   - High-performance native regex engine
-   - Optimized pattern matching with capture groups
-   - Full Unicode support with UTF-8/16 encoding
-   - Non-backtracking algorithm for predictable performance
+   - Native Oniguruma regex engine
+   - Multi-pattern search via `onig_regset_search`
+   - UTF-8 matching with Unicode support
+   - Configurable match/retry limits on init
 
 ### Pattern Caching
 
-The engine implements a sophisticated multi-level caching system:
+Compiled patterns live in a **single process-wide cache**, shared by every scanner:
 
-- **L1 Cache**: Hot patterns in JSI host objects
-
-  - Zero-copy access from JavaScript
-  - Reference-counted lifetime management
-  - Automatic cleanup on context destruction
-
-- **L2 Cache**: Compiled patterns in native memory
-
-  - LRU eviction with generational collection
-  - Adaptive sizing based on memory pressure
-  - Thread-safe concurrent access
-  - Configurable eviction policies
-
-- **Memory Management**
-  - Proactive cleanup of unused patterns
-  - Automatic defragmentation
-  - Memory pressure handling
-  - Configurable high/low watermarks
+- Patterns are keyed by source string and held with `shared_ptr`
+- Scanners keep strong refs while alive; eviction only frees entries with no live scanners
+- Size is an **estimate** (`4096 + patternLength * 32 + captures * 128`), derived from public Oniguruma capture counts, not a measured `regex_t` heap footprint
+- Default memory budget is derived from available device memory (iOS `os_proc_available_memory` / Android `/proc/meminfo`), floored at 8MiB and capped at 50MiB
+- JS can override with `maxCacheEntries` / `maxMemoryBytes`, and call `trimMemory` / `clearPatternCache` / `getCacheStats`
+- iOS automatically trims on `UIApplicationDidReceiveMemoryWarning`; apps can also call `attachMemoryPressureHandler(engine)` for AppState-driven trims (iOS memoryWarning + background)
 
 ## Supported Platforms
 
@@ -435,7 +436,7 @@ The engine implements a sophisticated multi-level caching system:
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on:
+Contributions are welcome! Please read our [Contributing Guide](.github/CONTRIBUTING.md) for details on:
 
 - Code of conduct
 - Development workflow

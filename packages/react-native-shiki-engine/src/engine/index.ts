@@ -1,15 +1,52 @@
 import type { PatternScanner, RegexEngine } from '@shikijs/types'
-import type { IOnigMatch, OnigString } from '@shikijs/vscode-textmate'
+import type { FindOption, IOnigMatch, OnigString } from '@shikijs/vscode-textmate'
+import type { Spec } from '../NativeShikiEngine'
 import { TurboModuleRegistry } from 'react-native'
-import ShikiEngine from '../NativeShikiEngine'
 import { convertToOnigMatch } from './utils'
 
-export function createNativeEngine(options: { maxCacheSize?: number } = {}): RegexEngine {
-  const { maxCacheSize = 1000 } = options
+export interface NativeEngineOptions {
+  maxCacheEntries?: number
+  maxMemoryBytes?: number
+}
 
-  if (!isNativeEngineAvailable()) throw new Error('Native engine not available')
+export interface CacheStats {
+  entryCount: number
+  estimatedBytes: number
+  scannerCount: number
+  maxEntries: number
+  maxBytes: number
+}
 
-  return {
+export type NativeRegexEngine = RegexEngine & {
+  getCacheStats: () => CacheStats
+  clearPatternCache: () => void
+  trimMemory: () => void
+  dispose: () => void
+}
+
+function assertNonNegativeInt(value: number | undefined, name: string): number | undefined {
+  if (value === undefined) return undefined
+  if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value))
+    throw new TypeError(`${name} must be a non-negative integer`)
+  return value
+}
+
+function getModule(): Spec | null {
+  return TurboModuleRegistry.get<Spec>('ShikiEngine') ?? null
+}
+
+export function createNativeEngine(options: NativeEngineOptions = {}): NativeRegexEngine {
+  const ShikiEngine = getModule()
+  if (!ShikiEngine) throw new Error('Native engine not available')
+
+  const maxCacheEntries = assertNonNegativeInt(options.maxCacheEntries, 'maxCacheEntries')
+  const maxMemoryBytes = assertNonNegativeInt(options.maxMemoryBytes, 'maxMemoryBytes')
+
+  ShikiEngine.configureCache(maxCacheEntries ?? 0, maxMemoryBytes ?? 0)
+
+  const scannerIds = new Set<number>()
+
+  const engine: NativeRegexEngine = {
     createScanner(patterns: (string | RegExp)[]): PatternScanner {
       if (
         !Array.isArray(patterns) ||
@@ -19,30 +56,30 @@ export function createNativeEngine(options: { maxCacheSize?: number } = {}): Reg
 
       const stringPatterns = patterns.map(p => (typeof p === 'string' ? p : p.source))
 
-      const scannerId = ShikiEngine.createScanner(stringPatterns, maxCacheSize)
+      const scannerId = ShikiEngine.createScanner(stringPatterns, maxCacheEntries ?? 1000)
       if (typeof scannerId !== 'number') throw new TypeError('Failed to create native scanner')
+      scannerIds.add(scannerId)
 
       return {
-        findNextMatchSync(string: string | OnigString, startPosition: number): IOnigMatch | null {
+        findNextMatchSync(
+          string: string | OnigString,
+          startPosition: number,
+          _options: FindOption,
+        ): IOnigMatch | null {
           if (startPosition < 0) throw new RangeError('Start position must be >= 0')
 
           const stringContent = typeof string === 'string' ? string : string.content
           if (typeof stringContent !== 'string') throw new TypeError('Invalid input string')
 
-          try {
-            const result = ShikiEngine.findNextMatchSync(scannerId, stringContent, startPosition)
-            return convertToOnigMatch(result)
-          } catch (err) {
-            if (__DEV__) console.error('Error in findNextMatchSync:', err)
-            throw err
-          }
+          const result = ShikiEngine.findNextMatchSync(scannerId, stringContent, startPosition)
+          return convertToOnigMatch(result)
         },
 
         dispose(): void {
           try {
             ShikiEngine.destroyScanner(scannerId)
-          } catch (err) {
-            if (__DEV__) console.error('Error disposing scanner:', err)
+          } finally {
+            scannerIds.delete(scannerId)
           }
         },
       }
@@ -52,14 +89,35 @@ export function createNativeEngine(options: { maxCacheSize?: number } = {}): Reg
       if (typeof s !== 'string') throw new TypeError('Input must be a string')
       return { content: s }
     },
+
+    getCacheStats(): CacheStats {
+      return ShikiEngine.getCacheStats()
+    },
+
+    clearPatternCache(): void {
+      ShikiEngine.clearPatternCache()
+    },
+
+    trimMemory(): void {
+      ShikiEngine.trimMemory()
+    },
+
+    dispose(): void {
+      for (const id of scannerIds) {
+        try {
+          ShikiEngine.destroyScanner(id)
+        } catch {
+          // ignore, scanner may already be gone
+        }
+      }
+      scannerIds.clear()
+      ShikiEngine.clearPatternCache()
+    },
   }
+
+  return engine
 }
 
 export function isNativeEngineAvailable(): boolean {
-  try {
-    TurboModuleRegistry.getEnforcing('ShikiEngine')
-    return true
-  } catch {
-    return false
-  }
+  return getModule() != null
 }

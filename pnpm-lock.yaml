@@ -195,15 +195,6 @@ importers:
       '@babel/runtime':
         specifier: catalog:babel
         version: 7.29.7
-      '@shikijs/core':
-        specifier: catalog:shiki
-        version: 4.4.3
-      '@shikijs/langs':
-        specifier: catalog:shiki
-        version: 4.4.3
-      '@shikijs/themes':
-        specifier: catalog:shiki
-        version: 4.4.3
       react:
         specifier: catalog:react
         version: 19.2.8
@@ -265,12 +256,21 @@ importers:
       '@shikijs/core':
         specifier: catalog:shiki
         version: 4.4.3
+      '@shikijs/langs':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/themes':
+        specifier: catalog:shiki
+        version: 4.4.3
       react:
         specifier: catalog:react
         version: 19.2.8
       react-native:
         specifier: catalog:react
         version: 0.87.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native-community/cli@20.2.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1))(@react-native/metro-config@0.87.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.2.18)(react@19.2.8)(supports-color@8.1.1)
+      react-native-shiki-engine:
+        specifier: workspace:*
+        version: link:../../packages/react-native-shiki-engine
     devDependencies:
       '@rari/lint':
         specifier: catalog:eslint
@@ -289,13 +289,6 @@ importers:
         version: 0.3.0(@types/node@26.3.0)(@typescript/typescript6@6.0.2)(jiti@2.7.0)(terser@5.44.1)(vite@8.2.2(@types/node@26.3.0)(jiti@2.7.0)(terser@5.44.1)(yaml@2.9.0))(yaml@2.9.0)
 
   packages/react-native-shiki-engine:
-    dependencies:
-      '@shikijs/types':
-        specifier: catalog:shiki
-        version: 4.4.3
-      '@shikijs/vscode-textmate':
-        specifier: catalog:shiki
-        version: 10.0.2
     devDependencies:
       '@babel/core':
         specifier: catalog:babel
@@ -303,6 +296,24 @@ importers:
       '@rari/lint':
         specifier: catalog:eslint
         version: 0.1.2(@typescript-eslint/eslint-plugin@8.68.0(@typescript-eslint/parser@8.68.0(@typescript/typescript6@6.0.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript/typescript6@6.0.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript-eslint/typescript-estree@8.68.0(@typescript/typescript6@6.0.2)(supports-color@8.1.1))(@typescript-eslint/utils@8.68.0(@typescript/typescript6@6.0.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript/typescript6@6.0.2)(eslint@10.9.1(jiti@2.7.0)(supports-color@8.1.1))(oxlint@1.80.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.3.0(@types/node@26.3.0)(@typescript/typescript6@6.0.2)(jiti@2.7.0)(terser@5.44.1)(vite@8.2.2(@types/node@26.3.0)(jiti@2.7.0)(terser@5.44.1)(yaml@2.9.0))(yaml@2.9.0)))(supports-color@8.1.1)
+      '@shikijs/core':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/engine-oniguruma':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/langs':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/themes':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/types':
+        specifier: catalog:shiki
+        version: 4.4.3
+      '@shikijs/vscode-textmate':
+        specifier: catalog:shiki
+        version: 10.0.2
       '@types/babel__core':
         specifier: catalog:babel
         version: 7.20.5

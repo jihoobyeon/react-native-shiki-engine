@@ -35,6 +35,10 @@ class NativeShikiEngineModule : public NativeShikiEngineCxxSpec<NativeShikiEngin
   std::optional<jsi::Object>
   findNextMatchSync(jsi::Runtime& rt, double scannerId, jsi::String text, double startPosition);
   void destroyScanner(jsi::Runtime& rt, double scannerId);
+  void configureCache(jsi::Runtime& rt, double maxEntries, double maxMemoryBytes);
+  void clearPatternCache(jsi::Runtime& rt);
+  void trimMemory(jsi::Runtime& rt);
+  jsi::Object getCacheStats(jsi::Runtime& rt);
 };
 
 }  // namespace facebook::react

@@ -9,8 +9,11 @@
   },
   "dependencies": {
     "@shikijs/core": "catalog:shiki",
+    "@shikijs/langs": "catalog:shiki",
+    "@shikijs/themes": "catalog:shiki",
     "react": "catalog:react",
-    "react-native": "catalog:react"
+    "react-native": "catalog:react",
+    "react-native-shiki-engine": "workspace:*"
   },
   "devDependencies": {
     "@rari/lint": "catalog:eslint",

@@ -13,7 +13,6 @@ find_library(ONIG_LIB onig
 
 # Main library
 add_library(react-native-shiki-engine SHARED
-    src/main/cpp/cpp-adapter.cpp
     ../cpp/NativeShikiEngineModule.cpp
     ../cpp/onig_regex.cpp
 )

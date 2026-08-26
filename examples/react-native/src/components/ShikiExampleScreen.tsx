@@ -1,52 +1,17 @@
-import type { ThemedToken } from '@shikijs/core'
 import { TokenDisplay } from '@shared/components/TokenDisplay'
-import { useHighlighter } from '@shared/hooks/useHighlighter'
-import { rustExample } from '@shared/snippets/rust-example'
+import { useShikiDemo } from '@shared/hooks/useShikiDemo'
 import { styles } from '@shared/styles'
-import React, { useEffect, useState } from 'react'
-import { ScrollView, Text, View } from 'react-native'
+import React, { useCallback } from 'react'
+import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { isNativeEngineAvailable } from 'react-native-shiki-engine'
 
 export function ShikiExampleScreen() {
-  const [engineStatus, setEngineStatus] = useState('Initializing...')
-  const [tokens, setTokens] = useState<ThemedToken[][]>([])
-  const [error, setError] = useState('')
-  const highlighter = useHighlighter()
-
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const available = isNativeEngineAvailable()
-        setEngineStatus(available ? 'Available' : 'Not Available')
-
-        if (!available) throw new Error('Native engine not available.')
-
-        await highlighter.initialize()
-
-        const tokenized = highlighter.tokenize(rustExample, {
-          lang: 'rust',
-          theme: 'dracula',
-        })
-
-        setTokens(tokenized)
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message)
-          console.error('Tokenization error:', err)
-        } else {
-          setError('An unknown error occurred.')
-          console.error('Unknown error:', err)
-        }
-      }
-    }
-
-    void initializeApp()
-
-    return () => {
-      highlighter.dispose()
-    }
-  }, [highlighter])
+  const resolveEngineStatus = useCallback(
+    (available: boolean) => (available ? 'Available' : 'Not Available'),
+    [],
+  )
+  const { engineStatus, error, language, theme, tokens, setLanguage, setTheme } =
+    useShikiDemo(resolveEngineStatus)
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -58,8 +23,49 @@ export function ShikiExampleScreen() {
         </View>
       </View>
 
+      <View style={styles.controls}>
+        <Pressable
+          style={[styles.chip, language === 'rust' && styles.chipActive]}
+          onPress={() => {
+            setLanguage('rust')
+          }}
+        >
+          <Text style={[styles.chipText, language === 'rust' && styles.chipTextActive]}>rust</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, language === 'typescript' && styles.chipActive]}
+          onPress={() => {
+            setLanguage('typescript')
+          }}
+        >
+          <Text style={[styles.chipText, language === 'typescript' && styles.chipTextActive]}>
+            typescript
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, theme === 'dracula' && styles.chipActive]}
+          onPress={() => {
+            setTheme('dracula')
+          }}
+        >
+          <Text style={[styles.chipText, theme === 'dracula' && styles.chipTextActive]}>
+            dracula
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.chip, theme === 'github-dark' && styles.chipActive]}
+          onPress={() => {
+            setTheme('github-dark')
+          }}
+        >
+          <Text style={[styles.chipText, theme === 'github-dark' && styles.chipTextActive]}>
+            github-dark
+          </Text>
+        </Pressable>
+      </View>
+
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
-        <Text style={styles.languageTag}>rust</Text>
+        <Text style={styles.languageTag}>{language}</Text>
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

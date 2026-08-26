@@ -1,31 +1,35 @@
-name: Build Android
+name: Build Expo
 
 on:
   push:
     branches:
       - main
     paths:
-      - .github/workflows/build-android.yml
-      - 'packages/react-native-shiki-engine/cpp/**'
-      - 'packages/react-native-shiki-engine/android/**'
-      - 'packages/react-native-shiki-engine/src/**'
-      - 'packages/react-native-shiki-engine/package.json'
-      - 'examples/react-native/android/**'
+      - .github/workflows/build-expo.yml
+      - packages/react-native-shiki-engine/**
+      - examples/expo-app/**
+      - examples/shared/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
   pull_request:
     paths:
-      - .github/workflows/build-android.yml
-      - 'packages/react-native-shiki-engine/cpp/**'
-      - 'packages/react-native-shiki-engine/android/**'
-      - 'packages/react-native-shiki-engine/src/**'
-      - 'packages/react-native-shiki-engine/package.json'
-      - 'examples/react-native/android/**'
+      - .github/workflows/build-expo.yml
+      - packages/react-native-shiki-engine/**
+      - examples/expo-app/**
+      - examples/shared/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
 
 permissions:
   contents: read
 
+concurrency:
+  group: build-expo-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build_example:
-    name: Build Android Example App
+  build_android:
+    name: Build Expo Android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,6 +63,10 @@ jobs:
       - name: Build Package
         run: pnpm --filter react-native-shiki-engine build
 
+      - name: Prebuild Expo Android
+        working-directory: examples/expo-app
+        run: pnpm exec expo prebuild --platform android --no-install
+
       - name: Build Android App
         run: ./gradlew assembleDebug --no-daemon --stacktrace
-        working-directory: examples/react-native/android
+        working-directory: examples/expo-app/android
