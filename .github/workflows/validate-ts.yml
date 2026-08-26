@@ -8,6 +8,7 @@ on:
       - '**.ts'
       - '**.tsx'
       - '**/tsconfig.json'
+      - .config/typescript/tsconfig.base.json
       - '**/package.json'
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
@@ -16,6 +17,7 @@ on:
       - '**.ts'
       - '**.tsx'
       - '**/tsconfig.json'
+      - .config/typescript/tsconfig.base.json
       - '**/package.json'
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
