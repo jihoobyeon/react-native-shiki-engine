@@ -15,7 +15,7 @@ export function attachMemoryPressureHandler(engine: NativeRegexEngine): () => vo
 
   subs.push(
     AppState.addEventListener('change', state => {
-      if (state === 'background' || state === 'inactive') engine.trimMemory()
+      if (state === 'background') engine.trimMemory()
     }),
   )
 

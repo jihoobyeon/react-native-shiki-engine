@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_set>
 
 #if __has_include(<react/renderer/components/NativeShikiEngineSpec/NativeShikiEngineSpecJSI.h>)
 #  include <react/renderer/components/NativeShikiEngineSpec/NativeShikiEngineSpecJSI.h>
@@ -39,6 +40,9 @@ class NativeShikiEngineModule : public NativeShikiEngineCxxSpec<NativeShikiEngin
   void clearPatternCache(jsi::Runtime& rt);
   void trimMemory(jsi::Runtime& rt);
   jsi::Object getCacheStats(jsi::Runtime& rt);
+
+ private:
+  std::unordered_set<double> owned_scanner_ids_;
 };
 
 }  // namespace facebook::react

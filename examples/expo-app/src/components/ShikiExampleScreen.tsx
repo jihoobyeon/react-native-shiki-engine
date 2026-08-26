@@ -1,8 +1,9 @@
+import { DemoControls } from '@shared/components/DemoControls'
 import { TokenDisplay } from '@shared/components/TokenDisplay'
 import { useShikiDemo } from '@shared/hooks/useShikiDemo'
 import { styles } from '@shared/styles'
 import React, { useCallback } from 'react'
-import { Platform, Pressable, ScrollView, StatusBar, Text, View } from 'react-native'
+import { Platform, ScrollView, StatusBar, Text, View } from 'react-native'
 
 export function ShikiExampleScreen() {
   const resolveEngineStatus = useCallback((available: boolean) => {
@@ -28,46 +29,12 @@ export function ShikiExampleScreen() {
         </View>
       </View>
 
-      <View style={styles.controls}>
-        <Pressable
-          style={[styles.chip, language === 'rust' && styles.chipActive]}
-          onPress={() => {
-            setLanguage('rust')
-          }}
-        >
-          <Text style={[styles.chipText, language === 'rust' && styles.chipTextActive]}>rust</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.chip, language === 'typescript' && styles.chipActive]}
-          onPress={() => {
-            setLanguage('typescript')
-          }}
-        >
-          <Text style={[styles.chipText, language === 'typescript' && styles.chipTextActive]}>
-            typescript
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.chip, theme === 'dracula' && styles.chipActive]}
-          onPress={() => {
-            setTheme('dracula')
-          }}
-        >
-          <Text style={[styles.chipText, theme === 'dracula' && styles.chipTextActive]}>
-            dracula
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.chip, theme === 'github-dark' && styles.chipActive]}
-          onPress={() => {
-            setTheme('github-dark')
-          }}
-        >
-          <Text style={[styles.chipText, theme === 'github-dark' && styles.chipTextActive]}>
-            github-dark
-          </Text>
-        </Pressable>
-      </View>
+      <DemoControls
+        language={language}
+        theme={theme}
+        setLanguage={setLanguage}
+        setTheme={setTheme}
+      />
 
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
         <Text style={styles.languageTag}>{language}</Text>

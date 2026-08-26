@@ -60,7 +60,7 @@
     "@shikijs/core": "^4.0.0",
     "@shikijs/types": "^4.0.0",
     "@shikijs/vscode-textmate": "^10.0.0",
-    "react": ">=18.0.0",
+    "react": ">=19.0.0",
     "react-native": ">=0.73.0"
   },
   "peerDependenciesMeta": {

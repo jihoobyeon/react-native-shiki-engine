@@ -24,7 +24,7 @@
                   object:nil
                    queue:[NSOperationQueue mainQueue]
               usingBlock:^(__unused NSNotification *note) {
-                trim_pattern_cache();
+                clear_unused_pattern_cache();
               }];
 }
 
@@ -50,7 +50,7 @@ RCT_EXPORT_MODULE(ShikiEngine)
                     object:nil
                      queue:[NSOperationQueue mainQueue]
                 usingBlock:^(__unused NSNotification *note) {
-                  trim_pattern_cache();
+                  clear_unused_pattern_cache();
                 }];
   });
 }

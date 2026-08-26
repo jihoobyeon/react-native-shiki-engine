@@ -9,6 +9,7 @@ on:
       - packages/react-native-shiki-engine/**
       - examples/expo-app/**
       - examples/shared/**
+      - .config/typescript/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
   pull_request:
@@ -17,6 +18,7 @@ on:
       - packages/react-native-shiki-engine/**
       - examples/expo-app/**
       - examples/shared/**
+      - .config/typescript/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
 
@@ -66,6 +68,30 @@ jobs:
       - name: Prebuild Expo Android
         working-directory: examples/expo-app
         run: pnpm exec expo prebuild --platform android --no-install
+
+      - name: Bump Gradle wrapper for AGP
+        working-directory: examples/expo-app/android
+        run: |
+          # Workaround: Expo SDK 57 prebuild still emits Gradle 9.3.x while AGP needs >= 9.4.1.
+          # When Expo ships a fixed template, this step fails so we can delete the workaround.
+          set -euo pipefail
+          props=gradle/wrapper/gradle-wrapper.properties
+          url=$(grep -E '^distributionUrl=' "$props")
+          echo "Prebuild Gradle wrapper: $url"
+
+          if echo "$url" | grep -qE 'gradle-9\.(4|[5-9]|[1-9][0-9]+)\.'; then
+            echo "::error::Expo prebuild already ships Gradle >= 9.4. Remove the 'Bump Gradle wrapper for AGP' workaround from .github/workflows/build-expo.yml"
+            exit 1
+          fi
+
+          if ! echo "$url" | grep -qE 'gradle-9\.3\.[0-9]+-'; then
+            echo "::error::Unexpected Gradle wrapper URL (expected 9.3.x to patch, or >= 9.4 to remove workaround): $url"
+            exit 1
+          fi
+
+          sed -i 's/gradle-9\.3\.[0-9]*-/gradle-9.4.1-/g' "$props"
+          echo "Patched Gradle wrapper:"
+          grep -E '^distributionUrl=' "$props"
 
       - name: Build Android App
         run: ./gradlew assembleDebug --no-daemon --stacktrace

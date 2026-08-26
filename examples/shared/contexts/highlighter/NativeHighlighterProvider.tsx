@@ -18,6 +18,19 @@ let highlighterInstance: HighlighterCore | null = null
 let nativeEngine: NativeRegexEngine | null = null
 let detachMemoryPressure: (() => void) | null = null
 let initializationPromise: Promise<void> | null = null
+let disposeTimer: ReturnType<typeof setTimeout> | null = null
+
+function disposeModuleSingletons() {
+  detachMemoryPressure?.()
+  detachMemoryPressure = null
+  nativeEngine?.dispose()
+  nativeEngine = null
+  if (highlighterInstance) {
+    highlighterInstance.dispose()
+    highlighterInstance = null
+  }
+  initializationPromise = null
+}
 
 export interface NativeHighlighterProviderProps {
   children: React.ReactNode
@@ -28,6 +41,9 @@ export function NativeHighlighterProvider({
   children,
   engineOptions,
 }: NativeHighlighterProviderProps) {
+  const maxCacheEntries = engineOptions?.maxCacheEntries
+  const maxMemoryBytes = engineOptions?.maxMemoryBytes
+
   const value = React.useMemo<HighlighterContextType>(
     () => ({
       initialize: async () => {
@@ -35,7 +51,7 @@ export function NativeHighlighterProvider({
           const available = isNativeEngineAvailable()
           if (!available) throw new Error('Native engine not available.')
 
-          nativeEngine = createNativeEngine(engineOptions)
+          nativeEngine = createNativeEngine({ maxCacheEntries, maxMemoryBytes })
           detachMemoryPressure = attachMemoryPressureHandler(nativeEngine)
 
           highlighterInstance = await createHighlighterCore({
@@ -54,26 +70,23 @@ export function NativeHighlighterProvider({
         return highlighterInstance.codeToTokensBase(code, options)
       },
 
-      dispose: () => {
-        detachMemoryPressure?.()
-        detachMemoryPressure = null
-        nativeEngine?.dispose()
-        nativeEngine = null
-        if (highlighterInstance) {
-          highlighterInstance.dispose()
-          highlighterInstance = null
-        }
-        initializationPromise = null
-      },
+      dispose: disposeModuleSingletons,
     }),
-    [engineOptions],
+    [maxCacheEntries, maxMemoryBytes],
   )
 
   React.useEffect(() => {
-    return () => {
-      value.dispose()
+    if (disposeTimer != null) {
+      clearTimeout(disposeTimer)
+      disposeTimer = null
     }
-  }, [value])
+    return () => {
+      disposeTimer = setTimeout(() => {
+        disposeTimer = null
+        disposeModuleSingletons()
+      }, 0)
+    }
+  }, [])
 
   return <HighlighterContext value={value}>{children}</HighlighterContext>
 }

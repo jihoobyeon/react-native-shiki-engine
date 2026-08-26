@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <cstring>
+#include <ctime>
 #include <mutex>
 #include <new>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -55,17 +57,17 @@ void trim_unlocked(GlobalPatternCache& g, bool force_all_unused) {
     return;
   }
 
-  std::vector<std::pair<std::string, time_t>> unused;
+  std::vector<std::string> unused;
   unused.reserve(g.entries.size());
   for (const auto& [key, value] : g.entries) {
     if (value.use_count() == 1) {
-      unused.push_back({key, 0});
+      unused.push_back(key);
     }
   }
 
-  std::sort(unused.begin(), unused.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+  std::sort(unused.begin(), unused.end());
 
-  for (const auto& [key, _] : unused) {
+  for (const auto& key : unused) {
     if (!force_all_unused && !over_budget()) {
       break;
     }
@@ -170,24 +172,13 @@ OnigContext* create_scanner(const char** patterns, int pattern_count, size_t /*m
     context->pattern_count = pattern_count;
     context->patterns.reserve(static_cast<size_t>(pattern_count));
 
-    std::vector<regex_t*> raw;
-    raw.reserve(static_cast<size_t>(pattern_count));
-
     for (int i = 0; i < pattern_count; i++) {
       auto cached = get_or_compile(patterns[i]);
       if (!cached) {
         delete context;
         return nullptr;
       }
-      raw.push_back(cached->regex);
       context->patterns.push_back(std::move(cached));
-    }
-
-    if (pattern_count > 0) {
-      if (onig_regset_new(&context->regset, pattern_count, raw.data()) != ONIG_NORMAL) {
-        delete context;
-        return nullptr;
-      }
     }
 
     {
@@ -203,7 +194,7 @@ OnigContext* create_scanner(const char** patterns, int pattern_count, size_t /*m
 }
 
 OnigResult* find_next_match(OnigContext* context, const char* text, int start_pos) {
-  if (!context || !text || start_pos < 0 || context->pattern_count <= 0 || !context->regset) {
+  if (!context || !text || start_pos < 0 || context->pattern_count <= 0) {
     return nullptr;
   }
 
@@ -213,39 +204,65 @@ OnigResult* find_next_match(OnigContext* context, const char* text, int start_po
       return nullptr;
     }
 
-    int match_pos = -1;
-    const int match_index = onig_regset_search(
-      context->regset,
-      reinterpret_cast<const OnigUChar*>(text),
-      reinterpret_cast<const OnigUChar*>(text + text_length),
-      reinterpret_cast<const OnigUChar*>(text + start_pos),
-      reinterpret_cast<const OnigUChar*>(text + text_length),
-      ONIG_REGSET_REGEX_LEAD,
-      ONIG_OPTION_NONE,
-      &match_pos
-    );
-
-    if (match_index < 0 || match_pos < 0) {
-      return nullptr;
-    }
-
-    OnigRegion* region = onig_regset_get_region(context->regset, match_index);
+    OnigRegion* region = onig_region_new();
     if (!region) {
       return nullptr;
     }
 
-    auto* result = new OnigResult();
-    result->pattern_index = match_index;
-    result->match_start = region->beg[0];
-    result->match_end = region->end[0];
-    result->capture_count = region->num_regs;
-    result->capture_indices = new int[static_cast<size_t>(result->capture_count) * 2];
+    int best_index = -1;
+    int best_start = -1;
+    std::vector<int> best_captures;
 
-    for (int j = 0; j < region->num_regs; j++) {
-      result->capture_indices[j * 2] = region->beg[j];
-      result->capture_indices[j * 2 + 1] = region->end[j];
+    for (int i = 0; i < context->pattern_count; i++) {
+      regex_t* regex = context->patterns[static_cast<size_t>(i)]->regex;
+      if (!regex) {
+        continue;
+      }
+
+      onig_region_clear(region);
+      const int r = onig_search(
+        regex,
+        reinterpret_cast<const OnigUChar*>(text),
+        reinterpret_cast<const OnigUChar*>(text + text_length),
+        reinterpret_cast<const OnigUChar*>(text + start_pos),
+        reinterpret_cast<const OnigUChar*>(text + text_length),
+        region,
+        ONIG_OPTION_NONE
+      );
+
+      if (r < 0 || region->num_regs <= 0) {
+        continue;
+      }
+
+      const int match_start = region->beg[0];
+      if (best_index < 0 || match_start < best_start || (match_start == best_start && i < best_index)) {
+        best_index = i;
+        best_start = match_start;
+        best_captures.resize(static_cast<size_t>(region->num_regs) * 2);
+        for (int j = 0; j < region->num_regs; j++) {
+          best_captures[static_cast<size_t>(j) * 2] = region->beg[j];
+          best_captures[static_cast<size_t>(j) * 2 + 1] = region->end[j];
+        }
+      }
+
+      if (match_start == start_pos && best_index == i) {
+        break;
+      }
     }
 
+    onig_region_free(region, 1);
+
+    if (best_index < 0) {
+      return nullptr;
+    }
+
+    auto* result = new OnigResult();
+    result->pattern_index = best_index;
+    result->match_start = best_captures[0];
+    result->match_end = best_captures[1];
+    result->capture_count = static_cast<int>(best_captures.size() / 2);
+    result->capture_indices = new int[best_captures.size()];
+    std::copy(best_captures.begin(), best_captures.end(), result->capture_indices);
     return result;
   } catch (const std::bad_alloc&) {
     return nullptr;
@@ -262,11 +279,6 @@ void free_result(OnigResult* result) {
 void free_scanner(OnigContext* context) {
   if (!context) {
     return;
-  }
-
-  if (context->regset) {
-    onig_regset_free(context->regset);
-    context->regset = nullptr;
   }
 
   context->patterns.clear();

@@ -407,7 +407,7 @@ The module uses a three-layer architecture optimizing for both performance and d
 
 3. **Oniguruma Core** (vendored)
    - Native Oniguruma regex engine
-   - Multi-pattern search via `onig_regset_search`
+   - Multi-pattern search via leftmost `onig_search` over shared compiled patterns
    - UTF-8 matching with Unicode support
    - Configurable match/retry limits on init
 

@@ -52,7 +52,7 @@ inline size_t default_cache_memory_budget() {
   constexpr size_t kFloor = 8ull * 1024ull * 1024ull;
   const size_t available = platform_available_memory_bytes();
   if (available == 0) {
-    return kHardCap;
+    return kFloor;
   }
   const size_t fraction = available / 8;
   if (fraction < kFloor) {

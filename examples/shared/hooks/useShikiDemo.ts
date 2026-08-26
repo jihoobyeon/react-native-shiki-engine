@@ -5,8 +5,8 @@ import { rustExample } from '../snippets/rust-example'
 import { typescriptExample } from '../snippets/typescript-example'
 import { useHighlighter } from './useHighlighter'
 
-type DemoLanguage = 'rust' | 'typescript'
-type DemoTheme = 'dracula' | 'github-dark'
+export type DemoLanguage = 'rust' | 'typescript'
+export type DemoTheme = 'dracula' | 'github-dark'
 
 const SNIPPETS: Record<DemoLanguage, string> = {
   rust: rustExample,
@@ -32,6 +32,14 @@ export function useShikiDemo(resolveEngineStatus: (available: boolean) => string
   const [theme, setTheme] = useState<DemoTheme>('dracula')
   const readyRef = useRef(false)
 
+  const languageRef = useRef(language)
+  const themeRef = useRef(theme)
+
+  useEffect(() => {
+    languageRef.current = language
+    themeRef.current = theme
+  }, [language, theme])
+
   const tokenize = useCallback(
     (nextLanguage: DemoLanguage, nextTheme: DemoTheme) => {
       const tokenized = highlighter.tokenize(SNIPPETS[nextLanguage], {
@@ -50,7 +58,7 @@ export function useShikiDemo(resolveEngineStatus: (available: boolean) => string
         setEngineStatus(resolveEngineStatus(available))
         await highlighter.initialize()
         readyRef.current = true
-        tokenize('rust', 'dracula')
+        tokenize(languageRef.current, themeRef.current)
       } catch (err: unknown) {
         if (err instanceof Error) {
           setError(err.message)

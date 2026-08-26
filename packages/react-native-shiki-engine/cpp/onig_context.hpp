@@ -27,7 +27,6 @@ struct CachedRegex {
 
 struct OnigContext {
   std::vector<std::shared_ptr<CachedRegex>> patterns;
-  OnigRegSet* regset = nullptr;
   int pattern_count = 0;
 };
 

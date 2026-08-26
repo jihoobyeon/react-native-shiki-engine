@@ -90,10 +90,15 @@ NativeShikiEngineModule::NativeShikiEngineModule(std::shared_ptr<CallInvoker> js
 
 NativeShikiEngineModule::~NativeShikiEngineModule() {
   std::lock_guard<std::mutex> lock(g_scanners_mutex);
-  for (const auto& pair : g_scanners) {
-    free_scanner(pair.second);
+  for (const double scanner_id : owned_scanner_ids_) {
+    auto it = g_scanners.find(scanner_id);
+    if (it == g_scanners.end()) {
+      continue;
+    }
+    free_scanner(it->second);
+    g_scanners.erase(it);
   }
-  g_scanners.clear();
+  owned_scanner_ids_.clear();
 }
 
 jsi::Object NativeShikiEngineModule::getConstants(jsi::Runtime& rt) {
@@ -123,6 +128,7 @@ double NativeShikiEngineModule::createScanner(jsi::Runtime& rt, jsi::Array patte
   std::lock_guard<std::mutex> lock(g_scanners_mutex);
   const double scanner_id = g_next_scanner_id++;
   g_scanners[scanner_id] = context;
+  owned_scanner_ids_.insert(scanner_id);
   return scanner_id;
 }
 
@@ -202,6 +208,7 @@ void NativeShikiEngineModule::destroyScanner(jsi::Runtime& rt, double scannerId)
     }
     context = it->second;
     g_scanners.erase(it);
+    owned_scanner_ids_.erase(scannerId);
   }
   free_scanner(context);
 }
@@ -214,10 +221,14 @@ void NativeShikiEngineModule::configureCache(jsi::Runtime& rt, double maxEntries
 
 void NativeShikiEngineModule::clearPatternCache(jsi::Runtime& rt) {
   clear_unused_pattern_cache();
+  g_last_utf8.clear();
+  g_last_b2u.clear();
 }
 
 void NativeShikiEngineModule::trimMemory(jsi::Runtime& rt) {
   trim_pattern_cache();
+  g_last_utf8.clear();
+  g_last_b2u.clear();
 }
 
 jsi::Object NativeShikiEngineModule::getCacheStats(jsi::Runtime& rt) {
