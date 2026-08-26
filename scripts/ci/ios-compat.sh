@@ -10,6 +10,7 @@ bootstrap_rn_compat_app "$RN_VERSION"
 echo "Building react-native-shiki-engine on iOS for React Native ${RN_VERSION}"
 
 export RCT_NEW_ARCH_ENABLED=1
+export NO_FLIPPER=1
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
