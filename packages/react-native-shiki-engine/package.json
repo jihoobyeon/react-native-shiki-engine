@@ -51,21 +51,32 @@
   "scripts": {
     "build": "bob build",
     "typecheck": "tsc --noEmit",
+    "test": "vp test",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
     "release": "release-it"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "@shikijs/core": "^4.0.0",
+    "@shikijs/types": "^4.0.0",
+    "@shikijs/vscode-textmate": "^10.0.0",
+    "react": ">=19.0.0",
+    "react-native": ">=0.73.0"
   },
-  "dependencies": {
-    "@shikijs/types": "catalog:shiki",
-    "@shikijs/vscode-textmate": "catalog:shiki"
+  "peerDependenciesMeta": {
+    "@shikijs/core": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@babel/core": "catalog:babel",
     "@rari/lint": "catalog:eslint",
+    "@shikijs/core": "catalog:shiki",
+    "@shikijs/engine-oniguruma": "catalog:shiki",
+    "@shikijs/langs": "catalog:shiki",
+    "@shikijs/themes": "catalog:shiki",
+    "@shikijs/types": "catalog:shiki",
+    "@shikijs/vscode-textmate": "catalog:shiki",
     "@types/babel__core": "catalog:babel",
     "@types/react": "catalog:types",
     "react": "catalog:react",
@@ -78,6 +89,7 @@
   "react-native-builder-bob": {
     "source": "src",
     "output": "lib",
+    "exclude": "**/*.{test,spec}.{ts,tsx}",
     "targets": [
       [
         "module",
@@ -88,7 +100,7 @@
       [
         "typescript",
         {
-          "project": "tsconfig.json",
+          "project": "tsconfig.build.json",
           "tsc": "node_modules/typescript-7/bin/tsc"
         }
       ]

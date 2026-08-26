@@ -8,12 +8,16 @@ on:
       - .github/workflows/build-android.yml
       - 'packages/react-native-shiki-engine/cpp/**'
       - 'packages/react-native-shiki-engine/android/**'
+      - 'packages/react-native-shiki-engine/src/**'
+      - 'packages/react-native-shiki-engine/package.json'
       - 'examples/react-native/android/**'
   pull_request:
     paths:
       - .github/workflows/build-android.yml
       - 'packages/react-native-shiki-engine/cpp/**'
       - 'packages/react-native-shiki-engine/android/**'
+      - 'packages/react-native-shiki-engine/src/**'
+      - 'packages/react-native-shiki-engine/package.json'
       - 'examples/react-native/android/**'
 
 permissions:

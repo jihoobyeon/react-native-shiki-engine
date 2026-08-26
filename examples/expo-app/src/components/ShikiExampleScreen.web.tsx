@@ -1,45 +1,15 @@
-import type { ThemedToken } from '@shikijs/core'
+import { DemoControls } from '@shared/components/DemoControls'
 import { TokenDisplay } from '@shared/components/TokenDisplay'
-import { useHighlighter } from '@shared/hooks/useHighlighter'
-import { rustExample } from '@shared/snippets/rust-example'
+import { useShikiDemo } from '@shared/hooks/useShikiDemo'
 import { styles } from '@shared/styles'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback } from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 export function ShikiExampleScreen() {
-  const [tokens, setTokens] = useState<ThemedToken[][]>([])
-  const [error, setError] = useState('')
-  const highlighter = useHighlighter()
-
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        await highlighter.initialize()
-
-        const tokenized = highlighter.tokenize(rustExample, {
-          lang: 'rust',
-          theme: 'dracula',
-        })
-
-        setTokens(tokenized)
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message)
-          console.error('Tokenization error:', err)
-        } else {
-          setError('An unknown error occurred.')
-          console.error('Unknown error:', err)
-        }
-      }
-    }
-
-    void initializeApp()
-
-    return () => {
-      highlighter.dispose()
-    }
-  }, [highlighter])
+  const resolveEngineStatus = useCallback(() => 'WASM Engine', [])
+  const { error, language, theme, tokens, setLanguage, setTheme } =
+    useShikiDemo(resolveEngineStatus)
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -54,8 +24,15 @@ export function ShikiExampleScreen() {
         </View>
       </View>
 
+      <DemoControls
+        language={language}
+        theme={theme}
+        setLanguage={setLanguage}
+        setTheme={setTheme}
+      />
+
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
-        <Text style={styles.languageTag}>rust</Text>
+        <Text style={styles.languageTag}>{language}</Text>
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

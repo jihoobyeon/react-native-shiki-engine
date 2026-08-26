@@ -12,9 +12,6 @@
   },
   "dependencies": {
     "@babel/runtime": "catalog:babel",
-    "@shikijs/core": "catalog:shiki",
-    "@shikijs/langs": "catalog:shiki",
-    "@shikijs/themes": "catalog:shiki",
     "react": "catalog:react",
     "react-native": "catalog:react",
     "react-native-safe-area-context": "catalog:react",

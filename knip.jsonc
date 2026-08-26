@@ -3,7 +3,9 @@
     // Platform-specific files resolved by Metro's .web.tsx extension
     "examples/expo-app/App.web.tsx",
     // Used by Metro/Expo at build time for Babel configuration
-    "examples/expo-app/babel.config.js"
+    "examples/expo-app/babel.config.js",
+    // RN Codegen TurboModule entry, default export is required by the native bridge
+    "packages/react-native-shiki-engine/src/NativeShikiEngine.ts"
   ],
   "ignoreDependencies": [
     // Required at runtime by Metro bundler for Babel helpers (interopRequireDefault, etc.)
@@ -18,7 +20,9 @@
     // Transitive dep of @react-native/metro-config, used for type import in metro.config.js
     "metro-config",
     // Used only for JSDoc type annotation in react-native.config.js
-    "@react-native-community/cli-types"
+    "@react-native-community/cli-types",
+    // Autolinked native module, imported via examples/shared, listed for RN/Expo linking
+    "react-native-shiki-engine"
   ],
   "ignoreBinaries": [
     // C++ formatter installed via apt in CI, not an npm package

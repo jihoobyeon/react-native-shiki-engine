@@ -1,54 +1,20 @@
-import type { ThemedToken } from '@shikijs/core'
+import { DemoControls } from '@shared/components/DemoControls'
 import { TokenDisplay } from '@shared/components/TokenDisplay'
-import { useHighlighter } from '@shared/hooks/useHighlighter'
-import { rustExample } from '@shared/snippets/rust-example'
+import { useShikiDemo } from '@shared/hooks/useShikiDemo'
 import { styles } from '@shared/styles'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback } from 'react'
 import { Platform, ScrollView, StatusBar, Text, View } from 'react-native'
-import { isNativeEngineAvailable } from 'react-native-shiki-engine'
 
 export function ShikiExampleScreen() {
-  const [engineStatus, setEngineStatus] = useState('Initializing...')
-  const [tokens, setTokens] = useState<ThemedToken[][]>([])
-  const [error, setError] = useState('')
-  const highlighter = useHighlighter()
+  const resolveEngineStatus = useCallback((available: boolean) => {
+    if (Platform.OS === 'web') return 'WASM Engine'
+    return available ? 'Native Engine' : 'Not Available'
+  }, [])
+  const { engineStatus, error, language, theme, tokens, setLanguage, setTheme } =
+    useShikiDemo(resolveEngineStatus)
 
   const platformName = Platform.OS === 'web' ? 'Web' : Platform.OS === 'ios' ? 'iOS' : 'Android'
   const statusBarHeight = Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight ?? 0)
-
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const available = isNativeEngineAvailable()
-        const engineType =
-          Platform.OS === 'web' ? 'WASM Engine' : available ? 'Native Engine' : 'Not Available'
-        setEngineStatus(engineType)
-
-        await highlighter.initialize()
-
-        const tokenized = highlighter.tokenize(rustExample, {
-          lang: 'rust',
-          theme: 'dracula',
-        })
-
-        setTokens(tokenized)
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message)
-          console.error('Tokenization error:', err)
-        } else {
-          setError('An unknown error occurred.')
-          console.error('Unknown error:', err)
-        }
-      }
-    }
-
-    void initializeApp()
-
-    return () => {
-      highlighter.dispose()
-    }
-  }, [highlighter])
 
   return (
     <View style={[styles.container, { paddingTop: statusBarHeight }]}>
@@ -63,8 +29,15 @@ export function ShikiExampleScreen() {
         </View>
       </View>
 
+      <DemoControls
+        language={language}
+        theme={theme}
+        setLanguage={setLanguage}
+        setTheme={setTheme}
+      />
+
       <ScrollView style={styles.demoSection} showsVerticalScrollIndicator={false}>
-        <Text style={styles.languageTag}>rust</Text>
+        <Text style={styles.languageTag}>{language}</Text>
         {error ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>

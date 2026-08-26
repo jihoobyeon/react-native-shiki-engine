@@ -18,6 +18,16 @@ export interface Spec extends TurboModule {
     }>
   } | null
   readonly destroyScanner: (scannerId: number) => void
+  readonly configureCache: (maxEntries: number, maxMemoryBytes: number) => void
+  readonly clearPatternCache: () => void
+  readonly trimMemory: () => void
+  readonly getCacheStats: () => {
+    readonly entryCount: number
+    readonly estimatedBytes: number
+    readonly scannerCount: number
+    readonly maxEntries: number
+    readonly maxBytes: number
+  }
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('ShikiEngine')

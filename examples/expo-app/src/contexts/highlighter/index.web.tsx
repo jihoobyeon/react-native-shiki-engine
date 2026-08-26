@@ -4,7 +4,9 @@ import { HighlighterContext } from '@shared/contexts/highlighter/context'
 import { createHighlighterCore } from '@shikijs/core'
 import { createOnigurumaEngine } from '@shikijs/engine-oniguruma'
 import rust from '@shikijs/langs/rust'
+import typescript from '@shikijs/langs/typescript'
 import dracula from '@shikijs/themes/dracula'
+import githubDark from '@shikijs/themes/github-dark'
 import React from 'react'
 
 let highlighterInstance: HighlighterCore | null = null
@@ -16,8 +18,8 @@ export function HighlighterProvider({ children }: { children: React.ReactNode })
       initialize: async () => {
         initializationPromise ??= (async () => {
           highlighterInstance = await createHighlighterCore({
-            langs: [rust],
-            themes: [dracula],
+            langs: [rust, typescript],
+            themes: [dracula, githubDark],
             engine: createOnigurumaEngine(import('@shikijs/engine-oniguruma/wasm-inlined')),
           })
         })()
@@ -41,6 +43,12 @@ export function HighlighterProvider({ children }: { children: React.ReactNode })
     }),
     [],
   )
+
+  React.useEffect(() => {
+    return () => {
+      value.dispose()
+    }
+  }, [value])
 
   return <HighlighterContext value={value}>{children}</HighlighterContext>
 }

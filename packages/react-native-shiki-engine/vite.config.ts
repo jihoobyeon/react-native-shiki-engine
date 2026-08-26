@@ -11,4 +11,7 @@ export default defineConfig({
       'typescript/prefer-readonly-parameter-types': 'off',
     },
   },
+  test: {
+    environment: 'node',
+  },
 })

@@ -5,6 +5,7 @@
 .cxx/
 .kotlin/
 .metro-health-check*
+.pnpm-store/
 **/.xcode.env.local
 **/Pods/
 
