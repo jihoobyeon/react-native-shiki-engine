@@ -2,7 +2,7 @@
  * @type {import('@react-native-community/cli-types').UserDependencyConfig}
  */
 module.exports = {
-  dependency: {
+  dependencies: {
     platforms: {
       android: {
         cxxModuleCMakeListsModuleName: 'react-native-shiki-engine',
